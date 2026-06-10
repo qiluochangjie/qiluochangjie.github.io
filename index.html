@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>P2P 直连测试</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0; min-height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .container { max-width: 720px; width: 100%; padding: 20px; }
+
+        /* Header */
+        .header { text-align: center; margin-bottom: 28px; }
+        .header h1 { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header p { color: #64748b; font-size: 14px; margin-top: 4px; }
+
+        /* Card */
+        .card {
+            background: #1e293b; border-radius: 16px; padding: 24px;
+            border: 1px solid #334155; transition: all .3s ease;
+            position: relative; overflow: hidden;
+        }
+        .card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transform: scaleX(0); transform-origin: left; transition: transform .6s ease;
+        }
+        .card.active::before { transform: scaleX(1); }
+        .card + .card { margin-top: 14px; }
+
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .card-title .badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; border-radius: 50%;
+            background: #3b82f6; color: #fff; font-size: 12px; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .card-title .badge.green { background: #22c55e; }
+        .card-title .badge.amber { background: #f59e0b; }
+        .card-title .badge.purple { background: #8b5cf6; }
+
+        /* Role selector */
+        .role-group { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .role-btn {
+            flex: 1; max-width: 200px; padding: 14px 20px;
+            border: 2px solid #334155; border-radius: 12px; cursor: pointer;
+            font-size: 15px; font-weight: 600; transition: all .25s ease;
+            background: #0f172a; color: #64748b; text-align: center;
+        }
+        .role-btn:hover { border-color: #3b82f6; background: #1a2a4a; }
+        .role-btn.active { border-color: #3b82f6; background: #1e3a5f; color: #60a5fa; box-shadow: 0 0 20px rgba(59,130,246,.15); }
+        .role-btn .sub { display: block; font-size: 11px; font-weight: 400; margin-top: 3px; opacity: .6; }
+
+        /* Status bar */
+        .status-bar {
+            display: flex; align-items: center; gap: 10px;
+            justify-content: center; padding: 14px; margin-bottom: 6px;
+        }
+        .dot {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: #475569; transition: all .4s ease;
+            position: relative;
+        }
+        .dot.connected { background: #22c55e; box-shadow: 0 0 16px rgba(34,197,94,.5); }
+        .dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
+        .dot.error { background: #ef4444; box-shadow: 0 0 16px rgba(239,68,68,.4); }
+        .dot.idle { background: #475569; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(1.2); } }
+        .status-text { font-size: 14px; color: #94a3b8; }
+        .status-text.connected { color: #4ade80; }
+        .status-text.error { color: #f87171; }
+
+        /* Connection type indicator */
+        .conn-type {
+            text-align: center; font-size: 12px; color: #64748b;
+            padding: 4px 0 14px; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .conn-type .tag {
+            display: inline-block; padding: 2px 10px; border-radius: 999px;
+            font-size: 11px; font-weight: 600;
+        }
+        .tag.auto { background: #1e3a5f; color: #60a5fa; }
+        .tag.manual { background: #3a2a1a; color: #fbbf24; }
+
+        /* Textarea */
+        textarea, input {
+            width: 100%; padding: 12px 14px;
+            border: 1px solid #334155; border-radius: 10px;
+            background: #0f172a; color: #e2e8f0; font-size: 13px;
+            font-family: 'Courier New', monospace; transition: border-color .2s;
+            resize: vertical;
+        }
+        textarea:focus, input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+        textarea { min-height: 80px; }
+        textarea.small { min-height: 56px; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 22px; border: none; border-radius: 10px; cursor: pointer;
+            font-size: 14px; font-weight: 600; transition: all .2s ease;
+        }
+        .btn:active { transform: scale(.96); }
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; box-shadow: 0 4px 15px rgba(59,130,246,.3); }
+        .btn-primary:disabled { background: #334155; color: #64748b; box-shadow: none; transform: none; cursor: not-allowed; }
+        .btn-success { background: #22c55e; color: #fff; }
+        .btn-success:hover { background: #16a34a; box-shadow: 0 4px 15px rgba(34,197,94,.3); }
+        .btn-warning { background: #f59e0b; color: #000; }
+        .btn-warning:hover { background: #d97706; box-shadow: 0 4px 15px rgba(245,158,11,.3); }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-danger:hover { background: #dc2626; box-shadow: 0 4px 15px rgba(239,68,68,.3); }
+        .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+        .btn-ghost:hover { background: #1e293b; color: #e2e8f0; }
+        .btn-sm { padding: 6px 14px; font-size: 12px; }
+
+        .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+        /* Hidden / Fade */
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn .35s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 300px; } }
+
+        /* Log */
+        .log-wrap { margin-top: 4px; }
+        .log { max-height: 160px; overflow-y: auto; font-size: 12px; font-family: 'Courier New', monospace; padding: 4px 0; }
+        .log p { padding: 3px 8px; color: #64748b; animation: fadeIn .2s ease; }
+        .log p.info { color: #60a5fa; }
+        .log p.success { color: #4ade80; }
+        .log p.error { color: #f87171; }
+        .log p.warning { color: #fbbf24; }
+        .log p.sys { color: #a78bfa; }
+        .log::-webkit-scrollbar { width: 4px; }
+        .log::-webkit-scrollbar-track { background: transparent; }
+        .log::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+
+        /* Chat */
+        .chat-msgs { max-height: 160px; overflow-y: auto; margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+        .chat-msgs .msg { padding: 8px 14px; border-radius: 10px; font-size: 14px; max-width: 80%; animation: fadeIn .2s ease; word-break: break-word; }
+        .chat-msgs .msg.me { background: #1e3a5f; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .chat-msgs .msg.peer { background: #1a2e1a; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-msgs .msg .time { font-size: 10px; opacity: .5; margin-top: 2px; display: block; }
+        .chat-msgs::-webkit-scrollbar { width: 4px; }
+        .chat-msgs::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+        .msg-row { display: flex; gap: 8px; margin-top: 10px; }
+        .msg-row input { flex: 1; }
+        .msg-row input::placeholder { color: #475569; }
+
+        /* Info row */
+        .info-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: #0f172a; font-size: 12px; color: #64748b; margin-bottom: 10px; }
+        .info-row .icon { font-size: 14px; }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container { padding: 12px; }
+            .card { padding: 16px; }
+            .role-btn { font-size: 13px; padding: 12px 14px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>P2P 直连测试</h1>
+        <p>基于 WebRTC 的点对点连接 · 同机自动 · 跨机手动</p>
+    </div>
+
+    <!-- Step 0: Role -->
+    <div class="card active" id="roleCard">
+        <div class="card-title"><span class="badge">1</span> 选择角色</div>
+        <div class="role-group">
+            <button class="role-btn active" data-role="offer" onclick="setRole('offer')">
+                发起方 (Offer)
+                <span class="sub">先创建连接</span>
+            </button>
+            <button class="role-btn" data-role="answer" onclick="setRole('answer')">
+                接收方 (Answer)
+                <span class="sub">等待接收</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Status -->
+    <div class="card" id="statusCard">
+        <div class="status-bar">
+            <span class="dot idle" id="dot"></span>
+            <span class="status-text" id="statusText">⏹ 选择角色后开始</span>
+        </div>
+        <div class="conn-type" id="connTypeWrap">
+            <span>连接方式</span>
+            <span class="tag auto" id="connTypeTag">自动信令</span>
+        </div>
+    </div>
+
+    <!-- Step 1: Offer -->
+    <div class="card" id="offerCard">
+        <div class="card-title"><span class="badge purple">①</span> 发起方 — 生成 Offer</div>
+        <div class="info-row"><span class="icon">💡</span> 点击按钮生成 Offer，复制后发给接收方</div>
+        <button class="btn btn-primary" id="createOfferBtn" onclick="createOffer()">
+            <span>⚡</span> 生成 Offer
+        </button>
+        <div class="hidden fade-in" id="offerSdpWrap" style="margin-top:12px;">
+            <textarea id="offerSdp" readonly class="small"></textarea>
+            <div class="actions">
+                <button class="btn btn-warning btn-sm" onclick="copySdp('offerSdp')">📋 复制 Offer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Answer receives Offer, sends Answer -->
+    <div class="card" id="answerCard">
+        <div class="card-title"><span class="badge green">②</span> 接收方 — 回应 Answer</div>
+        <div class="info-row"><span class="icon">💡</span> 粘贴发起方发来的 Offer，然后生成 Answer 发回去</div>
+        <textarea id="remoteOffer" placeholder="粘贴 Offer SDP..." class="small"></textarea>
+        <div class="actions">
+            <button class="btn btn-primary" onclick="receiveOffer()">✅ 接收并生成 Answer</button>
+        </div>
+        <div class="hidden fade-in" id="answerSdpWrap" style="margin-top:12px;">
+            <textarea id="answerSdp" readonly class="small"></textarea>
+            <div class="actions">
+                <button class="btn btn-warning btn-sm" onclick="copySdp('answerSdp')">📋 复制 Answer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Offer pastes Answer -->
+    <div class="card" id="finalCard">
+        <div class="card-title"><span class="badge amber">③</span> 发起方 — 粘贴 Answer 完成连接</div>
+        <div class="info-row"><span class="icon">💡</span> 粘贴接收方返回的 Answer SDP</div>
+        <textarea id="remoteAnswer" placeholder="粘贴 Answer SDP..." class="small"></textarea>
+        <div class="actions">
+            <button class="btn btn-success" onclick="receiveAnswer()">🔗 完成连接</button>
+        </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="card hidden" id="chatCard">
+        <div class="card-title"><span class="badge green">💬</span> 已建立 P2P 连接</div>
+        <div class="chat-msgs" id="chatMsgs"></div>
+        <div class="msg-row">
+            <input type="text" id="msgInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendMsg()" />
+            <button class="btn btn-success btn-sm" onclick="sendMsg()">发送</button>
+            <button class="btn btn-danger btn-sm" onclick="disconnect()">断开</button>
+        </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card" id="logCard">
+        <div class="card-title" style="cursor:pointer;margin-bottom:0;" onclick="document.getElementById('logBody').classList.toggle('hidden')">
+            <span class="badge">📋</span> 日志
+            <span style="margin-left:auto;font-size:11px;color:#64748b;">点击折叠</span>
+        </div>
+        <div class="log-wrap" id="logBody">
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== State ====================
+    let role = 'offer';
+    let pc = null;
+    let dc = null;
+    let connected = false;
+    let savedOffer = null;
+    let bc = null;
+    let bcReady = false;
+
+    const cfg = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+        ]
+    };
+
+    // ==================== DOM ====================
+    const $ = id => document.getElementById(id);
+    const dot = $('dot');
+    const stText = $('statusText');
+
+    function setStatus(state, text) {
+        dot.className = 'dot ' + state;
+        stText.className = 'status-text' + (state === 'connected' ? ' connected' : '') + (state === 'error' ? ' error' : '');
+        stText.textContent = text;
+    }
+
+    function log(msg, type = 'info') {
+        const p = document.createElement('p');
+        p.className = type;
+        p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        $('log').appendChild(p);
+        $('log').scrollTop = $('log').scrollHeight;
+    }
+
+    async function copySdp(id) {
+        try {
+            await navigator.clipboard.writeText($(id).value);
+            log('已复制到剪贴板', 'success');
+        } catch {
+            log('复制失败，请手动选中复制', 'error');
+        }
+    }
+
+    function showCards(show) {
+        ['offerCard','answerCard','finalCard','chatCard'].forEach(id => {
+            const el = $(id);
+            if (show.includes(id)) { el.classList.remove('hidden'); el.style.display = 'block'; }
+            else { el.classList.add('hidden'); el.style.display = 'none'; }
+        });
+    }
+
+    // ==================== Role ====================
+    function setRole(r) {
+        if (connected) { log('已连接，无法切换角色', 'error'); return; }
+        if (pc) { log('请刷新页面后再切换角色', 'error'); return; }
+        role = r;
+        document.querySelectorAll('.role-btn').forEach(b => b.classList.toggle('active', b.dataset.role === r));
+        log(`切换为 ${r === 'offer' ? '发起方 (Offer)' : '接收方 (Answer)'} 角色`, 'sys');
+
+        if (r === 'offer') {
+            showCards(['offerCard', 'finalCard']);
+            $('offerCard').classList.add('active');
+            $('finalCard').classList.add('active');
+        } else {
+            showCards(['answerCard']);
+            $('answerCard').classList.add('active');
+        }
+        setStatus('idle', '⏹ 等待操作');
+    }
+
+    // ==================== BroadcastChannel (auto signaling) ====================
+    function initBroadcast() {
+        try {
+            bc = new BroadcastChannel('p2p-signal');
+            bc.onmessage = (e) => {
+                const msg = e.data;
+                log(`收到广播: ${msg.type}`, 'sys');
+
+                if (msg.type === 'offer') {
+                    // 自动接收 Offer
+                    if (role === 'answer') {
+                        log('检测到同机 Offer，自动处理...', 'info');
+                        autoReceiveOffer(msg.sdp);
+                    }
+                } else if (msg.type === 'answer') {
+                    if (role === 'offer') {
+                        log('检测到同机 Answer，自动处理...', 'info');
+                        autoReceiveAnswer(msg.sdp);
+                    }
+                }
+            };
+            bcReady = true;
+            $('connTypeTag').textContent = '自动信令';
+            $('connTypeTag').className = 'tag auto';
+            log('同机自动信令已启用 (BroadcastChannel)', 'success');
+        } catch (e) {
+            bcReady = false;
+            $('connTypeTag').textContent = '手动信令';
+            $('connTypeTag').className = 'tag manual';
+            log('自动信令不可用，使用手动复制粘贴', 'info');
+        }
+    }
+
+    function broadcast(type, sdp) {
+        if (!bc || !bcReady) return false;
+        try { bc.postMessage({ type, sdp }); return true; } catch { return false; }
+    }
+
+    // ==================== WebRTC ====================
+    function createPC() {
+        if (pc) { try { pc.close(); } catch {} }
+        pc = new RTCPeerConnection(cfg);
+
+        pc.onicecandidate = (e) => {
+            if (!e.candidate) {
+                if (role === 'offer') {
+                    $('offerSdp').value = JSON.stringify(pc.localDescription);
+                    $('offerSdpWrap').classList.remove('hidden');
+                    // 广播给同机
+                    broadcast('offer', $('offerSdp').value);
+                    log('Offer 已生成' + (bcReady ? '，已自动发送' : '，请复制发给接收方'), 'success');
+                } else {
+                    $('answerSdp').value = JSON.stringify(pc.localDescription);
+                    $('answerSdpWrap').classList.remove('hidden');
+                    broadcast('answer', $('answerSdp').value);
+                    log('Answer 已生成' + (bcReady ? '，已自动发送' : '，请复制发给发起方'), 'success');
+                }
+            }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            const s = pc.iceConnectionState;
+            log(`ICE: ${s}`, 'sys');
+            if (s === 'connected' || s === 'completed') {
+                connected = true;
+                setStatus('connected', '✅ 已建立 P2P 连接');
+                onConnected();
+            } else if (s === 'failed') {
+                setStatus('error', '❌ 连接失败');
+                connected = false;
+            } else if (s === 'disconnected') {
+                if (connected) {
+                    setStatus('error', '❌ 连接已断开');
+                    connected = false;
+                }
+            }
+        };
+
+        pc.ondatachannel = (e) => setupDC(e.channel);
+        return pc;
+    }
+
+    function setupDC(channel) {
+        dc = channel;
+        dc.onopen = () => {
+            log('DataChannel 已打开', 'success');
+            connected = true;
+            setStatus('connected', '✅ 已建立 P2P 连接');
+            onConnected();
+        };
+        dc.onclose = () => {
+            if (connected) { log('DataChannel 已关闭', 'error'); connected = false; setStatus('error', '❌ 已断开'); }
+        };
+        dc.onmessage = (e) => {
+            const t = new Date().toLocaleTimeString();
+            log(`收到: ${e.data}`, 'success');
+            const d = document.createElement('div'); d.className = 'msg peer';
+            d.innerHTML = `对方: ${e.data} <span class="time">${t}</span>`;
+            $('chatMsgs').appendChild(d); $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
+        };
+    }
+
+    function onConnected() {
+        showCards(['chatCard']);
+        $('chatCard').style.display = 'block';
+        $('chatCard').classList.add('active');
+        log('🎉 P2P 直连成功！可发送消息', 'success');
+    }
+
+    // ==================== Offer ====================
+    async function createOffer() {
+        $('createOfferBtn').disabled = true;
+        log('创建 PeerConnection...', 'info');
+        setStatus('connecting', '⏳ 生成 Offer...');
+
+        try {
+            createPC();
+            dc = pc.createDataChannel('chat', { negotiated: true, id: 0 });
+            setupDC(dc);
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            savedOffer = JSON.stringify(pc.localDescription);
+
+            // 自动广播
+            if (bcReady) {
+                $('offerSdp').value = savedOffer;
+                $('offerSdpWrap').classList.remove('hidden');
+            }
+        } catch (err) {
+            log(`创建 Offer 失败: ${err.message}`, 'error');
+            setStatus('error', '❌ 创建失败');
+            $('createOfferBtn').disabled = false;
+        }
+    }
+
+    // ==================== Receive Offer (manual) ====================
+    async function receiveOffer() {
+        const txt = $('remoteOffer').value.trim();
+        if (!txt) { log('请先粘贴 Offer SDP', 'error'); return; }
+        setStatus('connecting', '⏳ 处理 Offer...');
+        await doReceiveOffer(txt);
+    }
+
+    async function autoReceiveOffer(sdp) {
+        setStatus('connecting', '⏳ 自动接收 Offer...');
+        $('remoteOffer').value = sdp;
+        await doReceiveOffer(sdp);
+    }
+
+    async function doReceiveOffer(sdp) {
+        log('处理 Offer...', 'info');
+        try {
+            const desc = JSON.parse(sdp);
+            createPC();
+            await pc.setRemoteDescription(new RTCSessionDescription(desc));
+            log('远程 Offer 已设置', 'info');
+
+            dc = pc.createDataChannel('chat', { negotiated: true, id: 0 });
+            setupDC(dc);
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+        } catch (err) {
+            log(`处理 Offer 失败: ${err.message}`, 'error');
+            setStatus('error', '❌ 处理失败');
+        }
+    }
+
+    // ==================== Receive Answer ====================
+    async function receiveAnswer() {
+        const txt = $('remoteAnswer').value.trim();
+        if (!txt) { log('请先粘贴 Answer SDP', 'error'); return; }
+        await doReceiveAnswer(txt);
+    }
+
+    async function autoReceiveAnswer(sdp) {
+        $('remoteAnswer').value = sdp;
+        await doReceiveAnswer(sdp);
+    }
+
+    async function doReceiveAnswer(sdp) {
+        if (!pc) {
+            log('连接已失效，请刷新重试', 'error');
+            setStatus('error');
+            return;
+        }
+
+        log(`信令状态: ${pc.signalingState}`, 'sys');
+
+        if (pc.signalingState !== 'have-local-offer') {
+            log(`状态异常 (${pc.signalingState})，尝试恢复...`, 'warning');
+            if (savedOffer) {
+                try {
+                    const old = pc; pc = null; try { old.close(); } catch {}
+                    createPC();
+                    dc = pc.createDataChannel('chat', { negotiated: true, id: 0 });
+                    setupDC(dc);
+                    await pc.setLocalDescription(new RTCSessionDescription(JSON.parse(savedOffer)));
+                    log('状态已恢复', 'success');
+                } catch (e) {
+                    log(`恢复失败: ${e.message}，请刷新页面`, 'error');
+                    setStatus('error'); return;
+                }
+            } else {
+                log('无备份 Offer，请刷新页面重新创建', 'error');
+                setStatus('error'); return;
+            }
+        }
+
+        log('设置远程 Answer...', 'info');
+        try {
+            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sdp)));
+            log('Answer 已设置，连接建立中...', 'success');
+        } catch (err) {
+            log(`设置 Answer 失败: ${err.message}`, 'error');
+            setStatus('error');
+        }
+    }
+
+    // ==================== Chat ====================
+    function sendMsg() {
+        const inp = $('msgInput');
+        const txt = inp.value.trim();
+        if (!txt) return;
+        if (!dc || dc.readyState !== 'open') {
+            log('连接未就绪', 'error');
+            return;
+        }
+        dc.send(txt);
+        const t = new Date().toLocaleTimeString();
+        log(`发送: ${txt}`, 'info');
+        const d = document.createElement('div'); d.className = 'msg me';
+        d.innerHTML = `我: ${txt} <span class="time">${t}</span>`;
+        $('chatMsgs').appendChild(d); $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
+        inp.value = '';
+    }
+
+    // ==================== Disconnect ====================
+    function disconnect() {
+        try { dc && dc.close(); } catch {}
+        try { pc && pc.close(); } catch {}
+        pc = null; dc = null; connected = false;
+        savedOffer = null;
+        setStatus('error', '❌ 已主动断开');
+        log('已主动断开连接', 'error');
+        showCards(['offerCard', 'finalCard']);
+        $('offerCard').style.display = 'block';
+        $('finalCard').style.display = 'block';
+        $('offerCard').classList.add('active');
+        $('finalCard').classList.add('active');
+        $('chatCard').style.display = 'none';
+        $('createOfferBtn').disabled = false;
+        $('offerSdpWrap').classList.add('hidden');
+        $('answerSdpWrap').classList.add('hidden');
+        ['offerSdp','answerSdp','remoteOffer','remoteAnswer'].forEach(id => $(id).value = '');
+        $('chatMsgs').innerHTML = '';
+    }
+
+    // ==================== Init ====================
+    // 初始显示：发起方看到全部步骤
+    setRole('offer');
+    initBroadcast();
+    log('页面已准备就绪', 'sys');
+</script>
+</body>
+</html>
