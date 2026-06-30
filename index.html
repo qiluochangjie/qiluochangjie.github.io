@@ -1,637 +1,2626 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>P2P 大厅</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #0a0f1a 0%, #121a2a 50%, #0f172a 100%);
-            color: #e2e8f0; min-height: 100vh;
-            display: flex; justify-content: center; align-items: flex-start; padding: 20px;
-        }
-        .container { max-width: 680px; width: 100%; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>🌤️ 像素天气农场 · 扩展版</title>
+  <style>
+    /* ===== CSS 变量 & 基础重置 ===== */
+    :root {
+      --bg-deep: #0d0d1a;
+      --bg-panel: rgba(22, 33, 62, 0.85);
+      --border-soft: rgba(15, 52, 96, 0.5);
+      --border-hover: #5d7a9e;
+      --btn-bg: rgba(45, 62, 80, 0.6);
+      --btn-border: #3d566e;
+      --text-primary: #e0e0e0;
+      --text-gold: #f1c40f;
+      --text-blue: #85c1e9;
+      --text-green: #2ecc71;
+      --text-red: #e74c3c;
+      --text-purple: #9b59b6;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --blur: blur(12px);
+      --transition-fast: 0.15s;
+      --transition-smooth: 0.2s;
+    }
 
-        /* Header */
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .header p { color: #64748b; font-size: 13px; margin-top: 2px; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-        /* Card */
-        .card {
-            background: #151d2c; border-radius: 16px; padding: 22px;
-            border: 1px solid #1f2a3a; position: relative; overflow: hidden;
-            transition: all .3s ease;
-        }
-        .card + .card { margin-top: 12px; }
-        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-        .card-title .badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 26px; height: 26px; border-radius: 50%;
-            background: #3b82f6; color: #fff; font-size: 12px; font-weight: 700;
-        }
-        .badge.purple { background: #8b5cf6; }
-        .badge.green { background: #22c55e; }
-        .badge.amber { background: #f59e0b; }
+    html {
+      image-rendering: pixelated;
+      height: 100%;
+      font-size: 16px;
+    }
 
-        /* Status dot */
-        .status-bar { display: flex; align-items: center; gap: 10px; justify-content: center; padding: 10px 0 0; }
-        .dot { width: 11px; height: 11px; border-radius: 50%; background: #475569; transition: .4s; }
-        .dot.connected { background: #22c55e; box-shadow: 0 0 12px rgba(34,197,94,.5); }
-        .dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
-        .dot.error { background: #ef4444; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
-        .status-text { font-size: 13px; color: #94a3b8; }
+    body {
+      font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+      background: #0d0d1a;
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      height: 100dvh;
+      padding: 16px;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
 
-        /* Buttons */
-        .btn {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 10px 22px; border: none; border-radius: 10px; cursor: pointer;
-            font-size: 14px; font-weight: 600; transition: all .2s;
-        }
-        .btn:active { transform: scale(.96); }
-        .btn-primary { background: #3b82f6; color: #fff; }
-        .btn-primary:hover { background: #2563eb; box-shadow: 0 4px 16px rgba(59,130,246,.3); }
-        .btn-primary:disabled { background: #334155; color: #64748b; box-shadow: none; cursor: not-allowed; transform: none; }
-        .btn-success { background: #22c55e; color: #fff; }
-        .btn-success:hover { background: #16a34a; box-shadow: 0 4px 16px rgba(34,197,94,.3); }
-        .btn-warning { background: #f59e0b; color: #000; }
-        .btn-warning:hover { background: #d97706; }
-        .btn-danger { background: #ef4444; color: #fff; }
-        .btn-danger:hover { background: #dc2626; }
-        .btn-outline { background: transparent; color: #94a3b8; border: 1px solid #334155; }
-        .btn-outline:hover { background: #1e293b; color: #e2e8f0; }
-        .btn-sm { padding: 6px 14px; font-size: 12px; }
-        .btn-lg { padding: 14px 32px; font-size: 16px; border-radius: 14px; }
+    .fullscreen-bg {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 50%, #0d0d1a 100%);
+      z-index: -1;
+      pointer-events: none;
+    }
 
-        .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: min(100%, 1400px);
+      height: min(100%, 900px);
+      max-height: calc(100dvh - 32px);
+    }
 
-        /* Lobby */
-        .lobby-actions { display: flex; gap: 12px; justify-content: center; margin: 8px 0; }
-        .lobby-btn {
-            flex: 1; padding: 18px 16px; border: 2px dashed #334155; border-radius: 14px;
-            background: #0f172a; color: #94a3b8; cursor: pointer; transition: .25s;
-            text-align: center; font-size: 14px; font-weight: 600;
-        }
-        .lobby-btn:hover { border-color: #3b82f6; color: #60a5fa; background: #1a2a4a; }
-        .lobby-btn .icon { font-size: 28px; display: block; margin-bottom: 6px; }
-        .lobby-btn .sub { font-size: 11px; font-weight: 400; opacity: .6; }
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: var(--bg-panel);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-lg);
+      gap: 12px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
 
-        /* Room code */
-        .room-code-box {
-            background: #0f172a; border-radius: 12px; padding: 16px;
-            text-align: center; margin: 8px 0;
-        }
-        .room-code {
-            font-family: 'Courier New', monospace; font-size: 32px; font-weight: 700;
-            letter-spacing: 8px; color: #60a5fa;
-        }
-        .room-label { font-size: 11px; color: #64748b; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 2px; }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
 
-        /* QR */
-        .qr-wrap { display: flex; justify-content: center; padding: 12px 0; }
-        .qr-wrap canvas, .qr-wrap img { border-radius: 12px; border: 2px solid #334155; padding: 8px; background: #fff; }
-        .qr-hint { text-align: center; font-size: 11px; color: #64748b; margin-top: 4px; }
+    .header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-        /* SDP textarea */
-        textarea, input[type="text"] {
-            width: 100%; padding: 11px 13px;
-            border: 1px solid #1f2a3a; border-radius: 10px;
-            background: #0f172a; color: #e2e8f0; font-size: 13px;
-            font-family: 'Courier New', monospace; transition: border-color .2s;
-            resize: vertical;
-        }
-        textarea:focus, input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
-        textarea { min-height: 70px; }
+    .header-info span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
 
-        /* Chat */
-        .chat-msgs { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-        .chat-msgs .msg { padding: 8px 13px; border-radius: 10px; font-size: 14px; max-width: 80%; word-break: break-word; animation: fadeIn .2s ease; }
-        .chat-msgs .msg.me { background: #1e3a5f; align-self: flex-end; }
-        .chat-msgs .msg.peer { background: #1a2e1a; align-self: flex-start; }
-        .chat-msgs .msg .time { font-size: 10px; opacity: .5; display: block; margin-top: 2px; }
-        .msg-row { display: flex; gap: 8px; }
-        .msg-row input { flex: 1; font-family: system-ui; }
-        .msg-row input::placeholder { color: #475569; }
+    .header-info .coins {
+      color: var(--text-gold);
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .header-info .day {
+      color: #3498db;
+    }
+    .header-info .time {
+      color: #95a5a6;
+    }
 
-        /* Log */
-        .log {
-            max-height: 140px; overflow-y: auto; font-size: 11px;
-            font-family: 'Courier New', monospace; padding: 2px 0;
-        }
-        .log p { padding: 2px 8px; color: #475569; animation: fadeIn .2s ease; }
-        .log p.info { color: #60a5fa; }
-        .log p.success { color: #4ade80; }
-        .log p.error { color: #f87171; }
-        .log p.warning { color: #fbbf24; }
-        .log p.sys { color: #8b5cf6; }
-        .log::-webkit-scrollbar, .chat-msgs::-webkit-scrollbar { width: 4px; }
-        .log::-webkit-scrollbar-thumb, .chat-msgs::-webkit-scrollbar-thumb { background: #1f2a3a; border-radius: 99px; }
+    .header-weather {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
 
-        /* Hidden */
-        .hidden { display: none !important; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .header-weather-btn {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-md);
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
 
-        /* Info tip */
-        .tip {
-            font-size: 11px; color: #64748b; padding: 8px 12px;
-            background: #0f172a; border-radius: 8px; margin-bottom: 10px;
-            display: flex; align-items: flex-start; gap: 6px;
-        }
-        .tip .icon { flex-shrink: 0; margin-top: 1px; }
+    .header-weather-btn:hover {
+      background: rgba(45, 62, 80, 0.8);
+      border-color: var(--border-hover);
+    }
+    .header-weather-btn.active {
+      border-color: var(--text-gold);
+      background: rgba(45, 62, 80, 0.9);
+      box-shadow: 0 0 8px rgba(241, 196, 15, 0.2);
+    }
+    .header-weather-btn.locked {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
 
-        /* Responsive */
-        @media (max-width: 480px) {
-            .container { padding: 0; }
-            .card { padding: 16px; }
-            .room-code { font-size: 24px; letter-spacing: 4px; }
-        }
-    </style>
+    .header-location {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 2px 6px;
+      background: rgba(45, 62, 80, 0.6);
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .header-action-btn {
+      padding: 6px 10px;
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 0.7rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .header-action-btn:hover {
+      background: rgba(45, 62, 80, 0.8);
+      border-color: var(--border-hover);
+    }
+    .header-action-btn:active {
+      transform: translateY(1px);
+    }
+    .header-action-btn.danger {
+      color: var(--text-red);
+    }
+    .header-action-btn.danger:hover {
+      background: rgba(61, 26, 26, 0.6);
+    }
+
+    .game-content {
+      display: flex;
+      gap: 14px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    @media (max-width: 768px) {
+      .game-content {
+        flex-direction: column;
+      }
+      .game-sidebar {
+        width: 100% !important;
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        gap: 8px !important;
+        padding: 8px !important;
+      }
+      .game-main {
+        min-height: 350px;
+      }
+    }
+
+    .game-sidebar {
+      width: 260px;
+      background: var(--bg-panel);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-lg);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .seed-shop-title,
+    .backpack-title {
+      font-size: 0.75rem;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .seed-shop-title {
+      color: var(--text-gold);
+    }
+    .backpack-title {
+      color: #3498db;
+    }
+
+    .seed-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      background: rgba(45, 62, 80, 0.4);
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      width: 100%;
+      margin-bottom: 4px;
+    }
+
+    .seed-btn:hover:not(.disabled) {
+      background: rgba(45, 62, 80, 0.6);
+    }
+    .seed-btn.selected {
+      border-color: var(--text-gold);
+      background: rgba(241, 196, 15, 0.1);
+      box-shadow: 0 0 6px rgba(241, 196, 15, 0.15);
+    }
+    .seed-btn.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+    .seed-btn.unlock-btn {
+      border-color: rgba(241,196,15,0.4);
+      background: rgba(241,196,15,0.05);
+      cursor: pointer;
+      opacity: 0.75;
+    }
+    .seed-btn.unlock-btn:hover {
+      border-color: var(--text-gold);
+      background: rgba(241,196,15,0.15);
+      opacity: 1;
+    }
+
+    .seed-btn .seed-name {
+      font-size: 0.75rem;
+      color: var(--text-primary);
+    }
+    .seed-btn .seed-cost {
+      font-size: 0.7rem;
+      color: var(--text-gold);
+    }
+
+    .backpack-btn {
+      padding: 7px 10px;
+      background: rgba(45, 62, 80, 0.4);
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.7rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      width: 100%;
+      text-align: left;
+    }
+
+    .backpack-btn:hover {
+      background: rgba(45, 62, 80, 0.6);
+    }
+
+    .achievements-area {
+      margin-top: auto;
+    }
+
+    .achievements-label {
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: var(--text-purple);
+      margin-bottom: 4px;
+    }
+
+    .achievements-icons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+    }
+
+    .achievement-badge {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      font-size: 0.75rem;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .achievement-badge.unlocked {
+      background: #2d3e50;
+      border: 1px solid var(--text-gold);
+      box-shadow: 0 0 6px rgba(241, 196, 15, 0.3);
+    }
+    .achievement-badge.locked {
+      background: #1a2332;
+      border: 1px solid var(--btn-border);
+      opacity: 0.4;
+      filter: grayscale(0.8);
+    }
+
+    .achievement-tooltip-fixed {
+      position: fixed;
+      background: #1a2332;
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      width: 180px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      z-index: 1000;
+      pointer-events: none;
+      display: none;
+    }
+    .achievement-tooltip-fixed.visible {
+      display: block;
+    }
+    .achievement-tooltip-fixed .tooltip-title {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: var(--text-gold);
+      margin-bottom: 2px;
+    }
+    .achievement-tooltip-fixed .tooltip-desc {
+      font-size: 0.65rem;
+      color: rgba(224,224,224,0.7);
+    }
+
+    .message-hint {
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: var(--radius-sm);
+      font-size: 0.65rem;
+      color: rgba(224, 224, 224, 0.6);
+      text-align: center;
+      transition: all var(--transition-smooth);
+    }
+
+    .game-main {
+      flex: 1;
+      background: var(--bg-panel);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-lg);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .farm-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .farm-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .farm-tab {
+      padding: 6px 14px;
+      background: rgba(45, 62, 80, 0.4);
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 0.75rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .farm-tab:hover {
+      background: rgba(45, 62, 80, 0.6);
+    }
+    .farm-tab.active {
+      border-color: var(--text-green);
+      background: rgba(46, 204, 113, 0.1);
+      color: var(--text-green);
+    }
+
+    .farm-grid-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    .farm-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 8px;
+      width: 100%;
+      height: 100%;
+      max-width: 640px;
+      max-height: 480px;
+    }
+
+    .plot {
+      aspect-ratio: 1;
+      background: rgba(139, 90, 43, 0.3);
+      border: 2px dashed #5d4e3e;
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: all var(--transition-fast);
+      gap: 2px;
+    }
+
+    .plot:hover {
+      background: rgba(139, 90, 43, 0.4);
+      border-color: #7d6e5e;
+    }
+    .plot:active {
+      transform: scale(0.95);
+    }
+    .plot.has-crop {
+      border-style: solid;
+    }
+    .plot.locked {
+      background: rgba(30, 30, 30, 0.5);
+      border: 2px solid #444;
+      cursor: not-allowed;
+      color: #888;
+      font-size: 1.2rem;
+    }
+
+    .plot .crop-emoji {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+    .plot .plus-icon {
+      font-size: 1.6rem;
+      color: rgba(255, 255, 255, 0.3);
+      line-height: 1;
+    }
+
+    .stage-bar {
+      display: flex;
+      gap: 2px;
+    }
+    .stage-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #555;
+      border: 1px solid #777;
+    }
+    .stage-dot.filled {
+      background: var(--text-green);
+      border-color: #27ae60;
+    }
+    .stage-dot.current {
+      background: var(--text-gold);
+      border-color: #f39c12;
+      animation: dot-pulse 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes dot-pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.35); }
+    }
+
+    .ready-label {
+      font-size: 0.6rem;
+      color: var(--text-green);
+      font-weight: bold;
+      animation: ready-blink 1s steps(2) infinite;
+    }
+    @keyframes ready-blink {
+      0% { opacity: 1; }
+      100% { opacity: 0.25; }
+    }
+    .grow-timer {
+      font-size: 0.6rem;
+      color: var(--text-blue);
+    }
+
+    .ranch-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 8px;
+      width: 100%;
+      height: 100%;
+      max-width: 640px;
+      max-height: 280px;
+    }
+
+    .ranch-plot {
+      aspect-ratio: 1;
+      background: rgba(40, 30, 20, 0.4);
+      border: 2px dashed #5d4e3e;
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: all var(--transition-fast);
+      gap: 2px;
+      overflow: hidden;
+    }
+
+    .ranch-plot:hover {
+      background: rgba(60, 45, 30, 0.5);
+      border-color: #7d6e5e;
+    }
+    .ranch-plot:active {
+      transform: scale(0.95);
+    }
+    .ranch-plot.locked {
+      background: rgba(30, 30, 30, 0.5);
+      border: 2px solid #444;
+      cursor: not-allowed;
+      color: #888;
+      font-size: 1.2rem;
+    }
+    .ranch-emoji-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      max-width: 90%;
+    }
+    .ranch-plot .ranch-animal-emoji {
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+    .ranch-plot .ranch-plus-icon {
+      font-size: 1.6rem;
+      color: rgba(255, 255, 255, 0.3);
+      line-height: 1;
+    }
+    .ranch-produce-ready {
+      font-size: 0.8rem;
+      position: absolute;
+      top: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: ready-blink 1s steps(2) infinite;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .ranch-count-badge {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 0.6rem;
+      background: rgba(0,0,0,0.7);
+      color: var(--text-gold);
+      padding: 0px 3px;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+
+    @keyframes wander1 {
+      0%   { transform: translate(0, 0); }
+      20%  { transform: translate(14px, -10px); }
+      40%  { transform: translate(-12px, 8px); }
+      60%  { transform: translate(-8px, -14px); }
+      80%  { transform: translate(10px, 12px); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes wander2 {
+      0%   { transform: translate(0, 0); }
+      25%  { transform: translate(-15px, -6px); }
+      50%  { transform: translate(8px, 15px); }
+      75%  { transform: translate(13px, -12px); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes wander3 {
+      0%   { transform: translate(0, 0); }
+      30%  { transform: translate(6px, 14px); }
+      55%  { transform: translate(-14px, -8px); }
+      80%  { transform: translate(12px, -10px); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes wander4 {
+      0%   { transform: translate(0, 0); }
+      22%  { transform: translate(-10px, 13px); }
+      48%  { transform: translate(15px, -5px); }
+      72%  { transform: translate(-6px, -15px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    .weather-canvas {
+      position: relative;
+      width: 100%;
+      height: 55px;
+      background: #4a90d9;
+      overflow: hidden;
+      transition: background 2s ease;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+    }
+
+    .cloud {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+    }
+    .cloud1 { width: 35px; height: 14px; top: 10px; left: 10%; animation: cloud-drift 20s linear infinite; }
+    .cloud2 { width: 30px; height: 12px; top: 6px; left: 40%; animation: cloud-drift 25s linear infinite; animation-delay: -8s; }
+    .cloud3 { width: 42px; height: 16px; top: 14px; left: 70%; animation: cloud-drift 22s linear infinite; animation-delay: -14s; }
+
+    @keyframes cloud-drift {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(50px); }
+    }
+
+    .sun {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: #f1c40f;
+      border-radius: 50%;
+      top: 6px;
+      right: 10px;
+      box-shadow: 0 0 8px #f39c12;
+      animation: sun-pulse 2s ease-in-out infinite;
+      transition: opacity 0.5s;
+    }
+    .sun.hidden { opacity: 0; }
+
+    @keyframes sun-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .moon {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #ecf0f1;
+      border-radius: 50%;
+      top: 8px;
+      right: 14px;
+      box-shadow: 0 0 5px rgba(236, 240, 241, 0.5), inset -4px -2px 0 rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .moon.visible { opacity: 1; }
+
+    .city-buildings {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+    }
+
+    .building {
+      position: absolute;
+      bottom: 0;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+    }
+    .building .roof {
+      position: absolute;
+      top: -5px;
+      left: -2px;
+      right: -2px;
+      height: 5px;
+      background: #1a1a2e;
+      border-radius: 1px 1px 0 0;
+    }
+
+    .window {
+      position: absolute;
+      width: 5px;
+      height: 7px;
+      background: #f1c40f;
+      box-shadow: 0 0 4px #f39c12;
+      border-radius: 1px;
+      transition: background 0.3s;
+    }
+    .window.off {
+      background: #1a1a2e;
+      box-shadow: none;
+    }
+
+    .particles-container {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .raindrop {
+      position: absolute;
+      width: 2px;
+      height: 10px;
+      background: rgba(170, 200, 255, 0.7);
+      animation: rain-fall linear infinite;
+    }
+    @keyframes rain-fall {
+      0% { transform: translateY(-20px); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(160px); opacity: 0; }
+    }
+
+    .snowflake {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background: white;
+      border-radius: 50%;
+      animation: snow-fall linear infinite;
+    }
+    @keyframes snow-fall {
+      0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(160px) rotate(360deg); opacity: 0; }
+    }
+
+    .lightning-flash {
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.05s;
+      border-radius: var(--radius-sm);
+    }
+    .lightning-flash.active { opacity: 0.6; }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-content {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #0f3460;
+      border-bottom: 2px solid #1a1a2e;
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: var(--text-gold);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-blue);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+    }
+    .modal-close:hover { background: #1a2332; }
+
+    .modal-body {
+      padding: 12px 16px 16px;
+    }
+
+    .storage-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .storage-crop-card {
+      background: rgba(26, 35, 50, 0.9);
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px;
+    }
+
+    .crop-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .crop-emoji { font-size: 1.5rem; }
+    .crop-name { font-size: 0.9rem; font-weight: bold; }
+    .crop-total { font-size: 0.75rem; color: var(--text-blue); margin-left: auto; }
+
+    .crop-card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .storage-quality-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 52, 96, 0.6);
+      border: 1px solid #0f3460;
+      border-radius: var(--radius-md);
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-size: 0.75rem;
+    }
+    .storage-quality-item:hover {
+      background: rgba(15, 52, 96, 0.8);
+      border-color: var(--text-green);
+    }
+    .storage-quality-item:active { transform: translateY(1px); }
+    .storage-quality-item.star { border-color: var(--text-gold); }
+    .storage-quality-item.star:hover { border-color: #f39c12; box-shadow: 0 0 10px rgba(241, 196, 15, 0.3); }
+    .storage-quality-item.diamond { border-color: var(--text-purple); }
+    .storage-quality-item.diamond:hover { border-color: #8e44ad; box-shadow: 0 0 10px rgba(155, 89, 182, 0.3); }
+
+    .quality-count { font-size: 0.75rem; }
+    .quality-price { font-size: 0.75rem; color: var(--text-gold); font-weight: bold; }
+    .quality-action { font-size: 0.7rem; color: var(--text-green); font-weight: bold; }
+
+    .sell-all-btn {
+      background: rgba(46, 204, 113, 0.2);
+      border: 1px solid var(--text-green);
+      border-radius: var(--radius-sm);
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      color: var(--text-green);
+      font-family: inherit;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .sell-all-btn:hover { background: rgba(46, 204, 113, 0.3); border-color: #27ae60; }
+    .sell-all-btn:active { transform: translateY(1px); }
+
+    .handbook-entry {
+      background: #1a2332;
+      border: 1px solid var(--btn-border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+    .handbook-entry:last-child { margin-bottom: 0; }
+    .handbook-entry.unlocked { border-color: var(--text-green); }
+    .handbook-entry.locked { opacity: 0.6; }
+    .handbook-entry .entry-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .handbook-entry .entry-name { font-size: 0.9rem; font-weight: bold; }
+    .handbook-entry .entry-status { font-size: 0.7rem; color: #666; margin-left: auto; }
+    .handbook-entry.unlocked .entry-status { color: var(--text-green); }
+    .handbook-stages { display: flex; gap: 6px; }
+    .handbook-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 4px;
+      background: #0f3460;
+      border-radius: var(--radius-sm);
+      font-size: 0.7rem;
+      color: var(--text-blue);
+    }
+    .handbook-stage .stage-emoji { font-size: 1.4rem; }
+    .handbook-stage .stage-label { font-size: 0.65rem; color: #666; }
+    .handbook-entry .entry-harvest { margin-top: 4px; font-size: 0.7rem; color: var(--text-gold); }
+
+    .weather-tooltip {
+      position: fixed;
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: var(--radius-lg);
+      padding: 8px 14px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 999;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .weather-tooltip.visible { display: flex; }
+    .weather-tooltip .tooltip-icon { font-size: 1.6rem; }
+    .weather-tooltip .tooltip-name { font-size: 0.85rem; font-weight: bold; }
+    .weather-tooltip .tooltip-detail { font-size: 0.7rem; color: var(--text-green); }
+
+    .storage-empty {
+      text-align: center;
+      color: #666;
+      padding: 40px 20px;
+    }
+
+    #import-input { display: none; }
+
+    .unlock-section {
+      margin-top: 8px;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-sm);
+      text-align: center;
+    }
+    .unlock-btn {
+      width: 100%;
+      padding: 8px;
+      background: rgba(231, 76, 60, 0.15);
+      border: 1px solid var(--text-red);
+      border-radius: var(--radius-md);
+      color: var(--text-red);
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .unlock-btn:hover {
+      background: rgba(231, 76, 60, 0.25);
+      border-color: #c0392b;
+    }
+    .unlock-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>P2P 大厅</h1>
-        <p>创建房间 · 分享码/扫码 · 直连通信</p>
+  <div class="fullscreen-bg"></div>
+
+  <div class="game-container">
+    <header class="game-header">
+      <div class="header-left">
+        <div class="header-info">
+          <span class="coins">💰 <span id="coinsDisplay">50</span></span>
+          <span class="day">📅 <span id="dayDisplay">第1天</span></span>
+          <span class="time">🕐 <span id="timeDisplay">12:00</span></span>
+        </div>
+        <div class="header-weather" id="headerWeather">
+          <button class="header-weather-btn active" data-weather="sunny" title="晴天">☀️</button>
+          <button class="header-weather-btn" data-weather="rainy" title="雨天">🌧️</button>
+          <button class="header-weather-btn" data-weather="snowy" title="雪天">❄️</button>
+          <button class="header-weather-btn" data-weather="stormy" title="雷暴">⛈️</button>
+        </div>
+        <div class="header-location" id="locationStatus"></div>
+      </div>
+      <div class="header-right">
+        <button class="header-action-btn" id="gpsBtn" title="获取真实天气">📍 定位</button>
+        <button class="header-action-btn" id="storageBtn">📦 仓库</button>
+        <button class="header-action-btn" id="saveBtn">💾 保存</button>
+        <button class="header-action-btn" id="exportBtn">📤 导出</button>
+        <button class="header-action-btn" id="importBtn">📥 导入</button>
+        <button class="header-action-btn danger" id="resetBtn">🔄 重置</button>
+      </div>
+    </header>
+
+    <div class="game-content">
+      <main class="game-main">
+        <div class="weather-canvas" id="weatherCanvas">
+          <div class="cloud cloud1"></div>
+          <div class="cloud cloud2"></div>
+          <div class="cloud cloud3"></div>
+          <div class="sun" id="sun"></div>
+          <div class="moon" id="moon"></div>
+          <div class="city-buildings" id="cityBuildings"></div>
+          <div class="particles-container" id="particlesContainer"></div>
+          <div class="lightning-flash" id="lightningFlash"></div>
+        </div>
+
+        <div class="farm-header">
+          <div class="farm-tabs">
+            <button class="farm-tab active" data-mode="farm">🌾 农场</button>
+            <button class="farm-tab" data-mode="ranch">🐮 牧场</button>
+          </div>
+        </div>
+
+        <div class="farm-grid-container">
+          <div class="farm-grid" id="farmGrid"></div>
+          <div class="ranch-grid" id="ranchGrid" style="display:none;"></div>
+        </div>
+      </main>
+
+      <aside class="game-sidebar">
+        <div class="seed-shop" id="seedShopSection">
+          <div class="seed-shop-title">🌱 种子商店</div>
+          <div id="seedBar"></div>
+        </div>
+        <div class="seed-shop" id="animalShopSection" style="display:none;">
+          <div class="seed-shop-title">🐄 动物商店</div>
+          <div id="animalBar"></div>
+        </div>
+
+        <div class="backpack-area">
+          <div class="backpack-title">🎒 背包/操作</div>
+          <button class="backpack-btn" id="handbookBtn">📖 作物图鉴</button>
+          <button class="backpack-btn" id="breedBtn" style="margin-top:4px;">🐣 繁殖动物</button>
+        </div>
+
+        <div class="achievements-area">
+          <div class="achievements-label">🏅 成就</div>
+          <div class="achievements-icons" id="achievementsArea"></div>
+        </div>
+
+        <div class="message-hint" id="messageHint">🌱 点击种子，再点空地种植</div>
+      </aside>
     </div>
+  </div>
 
-    <!-- ====== 大厅入口 ====== -->
-    <div class="card" id="lobbyCard">
-        <div class="card-title"><span class="badge purple">🏠</span> 大厅</div>
-        <div class="lobby-actions">
-            <button class="lobby-btn" onclick="createRoom()">
-                <span class="icon">🏗️</span> 创建房间
-                <span class="sub">生成连接码，等待对方加入</span>
-            </button>
-            <button class="lobby-btn" onclick="showJoin()">
-                <span class="icon">🔗</span> 加入房间
-                <span class="sub">粘贴连接码或手动输入 SDP</span>
-            </button>
-        </div>
-        <div class="status-bar" id="lobbyStatus">
-            <span class="dot" id="dot"></span>
-            <span class="status-text" id="statusText">等待操作</span>
-        </div>
+  <input type="file" id="import-input" accept=".json">
+
+  <div class="modal-overlay" id="handbookModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>📖 作物图鉴</span>
+        <button class="modal-close" id="handbookClose">✕</button>
+      </div>
+      <div class="modal-body" id="handbookBody"></div>
     </div>
+  </div>
 
-    <!-- ====== 创建房间（房主 / Offer） ====== -->
-    <div class="card hidden" id="roomCard">
-        <div class="card-title"><span class="badge purple">🏠</span> 我的房间</div>
-
-        <div class="room-code-box" id="roomCodeBox">
-            <div class="room-label">房间码</div>
-            <div class="room-code" id="roomCode">------</div>
-        </div>
-
-        <div class="qr-wrap hidden" id="qrWrap"></div>
-        <div class="qr-hint hidden" id="qrHint">对方扫描此二维码即可加入</div>
-
-        <div class="hidden" id="sdpBox" style="margin-top:12px;">
-            <textarea id="roomSdp" readonly></textarea>
-        </div>
-
-        <div class="actions">
-            <button class="btn btn-primary" id="genRoomBtn" onclick="startRoom()">⚡ 生成连接码</button>
-            <button class="btn btn-outline btn-sm hidden" id="copyLinkBtn" onclick="copySdpLink()">📋 复制连接码</button>
-            <button class="btn btn-warning btn-sm hidden" id="toggleQrBtn" onclick="toggleQr()">📱 切换二维码</button>
-            <button class="btn btn-danger btn-sm hidden" id="cancelRoomBtn" onclick="cancelRoom()">取消</button>
-        </div>
-
-        <!-- 手动粘贴 Answer 备用 -->
-        <div class="hidden" id="manualAnswerWrap" style="margin-top:14px;">
-            <div class="tip"><span class="icon">💡</span> 自动连接失败？在此粘贴对方返回的 Answer SDP</div>
-            <textarea id="remoteAnswer" placeholder="粘贴 Answer SDP..."></textarea>
-            <div class="actions">
-                <button class="btn btn-success btn-sm" onclick="receiveAnswer()">🔗 手动完成连接</button>
-            </div>
-        </div>
+  <div class="modal-overlay" id="storageModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>📦 仓库</span>
+        <button class="modal-close" id="storageClose">✕</button>
+      </div>
+      <div class="modal-body" id="storageBody"></div>
     </div>
+  </div>
 
-    <!-- ====== 加入房间（访客 / Answer） ====== -->
-    <div class="card hidden" id="joinCard">
-        <div class="card-title"><span class="badge green">🔗</span> 加入房间</div>
+  <div class="weather-tooltip" id="weatherTooltip"></div>
+  <div class="achievement-tooltip-fixed" id="achievementTooltip"></div>
 
-        <!-- 方式1: 输入连接码 -->
-        <div class="tip"><span class="icon">📋</span> 粘贴房间连接码（自动解析为 SDP）</div>
-        <textarea id="joinCode" placeholder="粘贴连接码..."></textarea>
-        <div class="actions">
-            <button class="btn btn-success" onclick="joinByCode()">✅ 解析并加入</button>
-        </div>
+  <script>
+    (function() {
+      // ============================================================
+      // 常量定义 - 扩展版
+      // ============================================================
+      const CROPS = {
+        carrot: {
+          name: '胡萝卜',
+          emoji: '🥕',
+          stages: ['🌰', '🌱', '🌿', '🥕'],
+          growthTime: 3 * 60 * 1000,
+          cost: 10,
+          value: 25,
+          color: '#e67e22',
+          dropMin: 1,
+          dropMax: 3,
+          unlockCost: 0
+        },
+        cabbage: {
+          name: '白菜',
+          emoji: '🥬',
+          stages: ['🌰', '🌱', '🌿', '🥬'],
+          growthTime: 4 * 60 * 1000,
+          cost: 15,
+          value: 40,
+          color: '#27ae60',
+          dropMin: 1,
+          dropMax: 3,
+          unlockCost: 80
+        },
+        strawberry: {
+          name: '草莓',
+          emoji: '🍓',
+          stages: ['🌰', '🌱', '🌿', '🍓'],
+          growthTime: 5 * 60 * 1000,
+          cost: 25,
+          value: 60,
+          color: '#e74c3c',
+          dropMin: 1,
+          dropMax: 3,
+          unlockCost: 200
+        },
+        corn: {
+          name: '玉米',
+          emoji: '🌽',
+          stages: ['🌰', '🌱', '🌿', '🌽'],
+          growthTime: 4.5 * 60 * 1000,
+          cost: 20,
+          value: 50,
+          color: '#f1c40f',
+          dropMin: 1,
+          dropMax: 3,
+          unlockCost: 400
+        },
+        tomato: {
+          name: '番茄',
+          emoji: '🍅',
+          stages: ['🌰', '🌱', '🌿', '🍅'],
+          growthTime: 6 * 60 * 1000,
+          cost: 30,
+          value: 80,
+          color: '#e74c3c',
+          dropMin: 1,
+          dropMax: 2,
+          unlockCost: 700
+        },
+        pumpkin: {
+          name: '南瓜',
+          emoji: '🎃',
+          stages: ['🌰', '🌱', '🌿', '🎃'],
+          growthTime: 8 * 60 * 1000,
+          cost: 40,
+          value: 120,
+          color: '#e67e22',
+          dropMin: 1,
+          dropMax: 2,
+          unlockCost: 1200
+        },
+        grape: {
+          name: '葡萄',
+          emoji: '🍇',
+          stages: ['🌰', '🌱', '🌿', '🍇'],
+          growthTime: 5.5 * 60 * 1000,
+          cost: 35,
+          value: 95,
+          color: '#9b59b6',
+          dropMin: 1,
+          dropMax: 2,
+          unlockCost: 2000
+        }
+      };
 
-        <!-- 方式2: 手动输入 SDP -->
-        <div style="margin-top:16px;">
-            <div class="tip"><span class="icon">📝</span> 或手动粘贴 Offer SDP</div>
-            <textarea id="remoteOffer" placeholder="粘贴 Offer SDP..."></textarea>
-            <div class="actions">
-                <button class="btn btn-outline btn-sm" onclick="joinManual()">手动加入</button>
-            </div>
-        </div>
+      const ANIMALS = {
+        chicken: { name:'鸡', emoji:'🐔', cost:25, breedTime:30*1000, produceType:'egg', produceName:'鸡蛋', produceEmoji:'🥚', produceInterval:60*1000, produceValue:10, slaughterName:'鸡肉', slaughterEmoji:'🍗', slaughterValue:30, furType:null, unlockCost:0 },
+        pig: { name:'猪', emoji:'🐷', cost:60, breedTime:40*1000, produceType:null, produceName:null, produceEmoji:null, produceInterval:null, produceValue:0, slaughterName:'猪肉', slaughterEmoji:'🥩', slaughterValue:80, furType:null, unlockCost:150 },
+        cow: { name:'牛', emoji:'🐮', cost:80, breedTime:50*1000, produceType:'milk', produceName:'牛奶', produceEmoji:'🥛', produceInterval:90*1000, produceValue:20, slaughterName:'牛肉', slaughterEmoji:'🥩', slaughterValue:120, furType:null, unlockCost:400 },
+        sheep: { name:'羊', emoji:'🐑', cost:50, breedTime:40*1000, produceType:'wool', produceName:'羊毛', produceEmoji:'🧶', produceInterval:90*1000, produceValue:18, slaughterName:'羊肉', slaughterEmoji:'🥩', slaughterValue:70, furType:'wool', unlockCost:250 }
+      };
 
-        <!-- Answer SDP 输出 -->
-        <div class="hidden fade-in" id="joinAnswerWrap" style="margin-top:14px;">
-            <textarea id="joinAnswerSdp" readonly></textarea>
-            <div class="qr-wrap" id="joinQrWrap"></div>
-            <div class="actions">
-                <button class="btn btn-warning btn-sm" onclick="copySdp('joinAnswerSdp')">📋 复制 Answer</button>
-            </div>
-        </div>
-    </div>
+      const WEATHER = {
+        sunny: { label: '晴天', icon: '☀️', sky: '#4a90d9', multiplier: 1, particle: 'none' },
+        rainy: { label: '雨天', icon: '🌧️', sky: '#5b6e82', multiplier: 1.5, particle: 'rain', particleCount: 40 },
+        snowy: { label: '雪天', icon: '❄️', sky: '#b0bec5', multiplier: 0.5, particle: 'snow', particleCount: 25 },
+        stormy: { label: '雷暴', icon: '⛈️', sky: '#3d3d5c', multiplier: 1.5, particle: 'rain', particleCount: 40 }
+      };
 
-    <!-- ====== 聊天 ====== -->
-    <div class="card hidden" id="chatCard">
-        <div class="card-title"><span class="badge green">💬</span> 已建立 P2P 连接</div>
-        <div class="chat-msgs" id="chatMsgs"></div>
-        <div class="msg-row">
-            <input type="text" id="msgInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendMsg()" />
-            <button class="btn btn-success btn-sm" onclick="sendMsg()">发送</button>
-            <button class="btn btn-danger btn-sm" onclick="disconnect()">断开</button>
-        </div>
-    </div>
+      const MAX_PLOTS = 20; // 5列 x 4行
+      const INITIAL_UNLOCKED = 6;
+      const BASE_UNLOCK_COST = 100;
+      const UNLOCK_COST_MULTIPLIER = 2;
+      const RANCH_MAX_PLOTS = 10; // 5列 x 2行
+      const RANCH_INITIAL_UNLOCKED = 3;
+      const RANCH_BASE_UNLOCK_COST = 150;
+      const RANCH_UNLOCK_COST_MULTIPLIER = 2;
+      const RANCH_MAX_PER_PLOT = 6;
+      const BREED_COOLDOWN = 30 * 1000; // 30秒冷却
+      const SAVE_KEY = 'weatherFarm_extended_v3';
+      const WEATHER_CACHE_TTL = 30 * 60 * 1000;
 
-    <!-- ====== 日志 ====== -->
-    <div class="card" id="logCard">
-        <div class="card-title" style="margin-bottom:0;cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
-            <span class="badge" style="font-size:14px">📋</span> 日志
-            <span style="margin-left:auto;font-size:11px;color:#64748b;">点击折叠</span>
-        </div>
-        <div id="logBody">
-            <div class="log" id="log"></div>
-        </div>
-    </div>
-</div>
+      const BUILDINGS = [
+        { left: 20, width: 40, height: 60, color: '#34495e' },
+        { left: 70, width: 50, height: 85, color: '#2c3e50' },
+        { left: 130, width: 35, height: 50, color: '#3d566e' },
+        { left: 175, width: 55, height: 75, color: '#2c3e50' },
+        { left: 240, width: 45, height: 55, color: '#34495e' },
+        { left: 295, width: 25, height: 40, color: '#3d566e' }
+      ];
 
-<script>
-    // ==================== State ====================
-    let mode = 'lobby';       // 'lobby' | 'room' | 'join' | 'chat'
-    let pc = null;
-    let dc = null;
-    let connected = false;
-    let savedOffer = null;
-    let roomCode = '';
-    let bc = null;
+      const ACHIEVEMENTS = [
+        { id: 'first_harvest', name: '初次收获', icon: '🌾', desc: '收获第一个作物', check: s => s.totalHarvested >= 1 },
+        { id: 'rich', name: '小富即安', icon: '💰', desc: '攒到 200 金币', check: s => s.coins >= 200 },
+        { id: 'rich_richer', name: '富甲一方', icon: '💎', desc: '攒到 500 金币', check: s => s.coins >= 500 },
+        { id: 'huge_harvest', name: '大丰收', icon: '📦', desc: '累计收获 30 个作物', check: s => s.totalHarvested >= 30 },
+        { id: 'star_harvest', name: '星光收获', icon: '⭐', desc: '收获一个优质品质作物', check: s => Object.values(s.storage).some(q => q.star > 0) },
+        { id: 'diamond_harvest', name: '极品时刻', icon: '✨', desc: '收获一个极品品质作物', check: s => Object.values(s.storage).some(q => q.diamond > 0) },
+        { id: 'collection', name: '收藏家', icon: '🏆', desc: '每种作物各收获≥3个', check: s => Object.values(CROPS).every(c => (s.storage[c.name].normal + s.storage[c.name].star + s.storage[c.name].diamond) >= 3) },
+        { id: 'land_buyer', name: '地主', icon: '🏡', desc: '解锁全部地块', check: s => s.unlockedPlots >= MAX_PLOTS },
+        { id: 'first_animal', name: '牧场初建', icon: '🐮', desc: '购买第一只动物', check: s => s.ranchPlots.some(p => p.animalType && p.animals.length > 0) },
+        { id: 'ranch_master', name: '牧场达人', icon: '🐄', desc: '解锁全部牧场栏位', check: s => s.ranchUnlockedPlots >= RANCH_MAX_PLOTS },
+        { id: 'ranch_harvest', name: '牧场丰收', icon: '🥛', desc: '累计收获 20 个动物产物', check: s => s.totalRanchHarvested >= 20 },
+        { id: 'breeder', name: '繁育者', icon: '🐣', desc: '成功繁殖一次动物', check: s => s.ranchPlots.filter(p => p.animalType && p.animals.length >= 3).length >= 1 },
+        { id: 'butcher', name: '屠夫', icon: '🔪', desc: '宰杀 5 只动物', check: s => s.totalRanchHarvested >= 5 && Object.values(s.ranchStorage).some(q => (q.normal + q.star + q.diamond) >= 3) }
+      ];
 
-    const cfg = {
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun.cloudflare.com:3478' },
-            { urls: 'stun:stun.nextcloud.com:443' },
-        ]
-    };
+      const QUALITY_MAP = {
+        normal: { label: '', emoji: '', multiplier: 1 },
+        star: { label: '优质', emoji: '⭐', multiplier: 2 },
+        diamond: { label: '极品', emoji: '💎', multiplier: 5 }
+      };
 
-    // ==================== DOM ====================
-    const $ = id => document.getElementById(id);
+      // ============================================================
+      // 工具函数
+      // ============================================================
+      const $ = (sel, ctx = document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 
-    function setStatus(state, text) {
-        $('dot').className = 'dot ' + state;
-        $('statusText').textContent = text;
-    }
+      function rollQuality() {
+        const r = Math.random();
+        if (r < 0.05) return 'diamond';
+        if (r < 0.25) return 'star';
+        return 'normal';
+      }
 
-    function log(msg, type = 'info') {
-        const p = document.createElement('p');
-        p.className = type;
-        p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        $('log').appendChild(p);
-        $('log').scrollTop = $('log').scrollHeight;
-    }
+      function getGameHour(state) {
+        const gameMinutes = (Date.now() - state.gameEpoch) / 1000;
+        return ((gameMinutes / 60) + 12) % 24;
+      }
 
-    async function copySdp(id) {
-        try { await navigator.clipboard.writeText($(id).value); log('已复制', 'success'); }
-        catch { log('复制失败，请手动选中', 'error'); }
-    }
+      function formatTimeLeft(ms) {
+        if (ms <= 0) return '已成熟';
+        const totalSec = Math.ceil(ms / 1000);
+        if (totalSec >= 60) {
+          const min = Math.floor(totalSec / 60);
+          const sec = totalSec % 60;
+          return `${min}分${sec}秒`;
+        }
+        return `${totalSec}秒`;
+      }
 
-    async function copySdpLink() {
-        const txt = $('roomSdp').value;
-        if (!txt) return;
-        try {
-            await navigator.clipboard.writeText(txt);
-            log('连接码已复制，发送给对方即可', 'success');
-        } catch { log('复制失败', 'error'); }
-    }
+      function getCropStage(plot, state) {
+        if (!plot.cropType || !plot.plantedAt) return null;
+        const crop = CROPS[plot.cropType];
+        const weatherInfo = WEATHER[state.weather];
+        const elapsed = Date.now() - plot.plantedAt;
+        const effectiveTime = crop.growthTime / weatherInfo.multiplier;
+        const totalStages = crop.stages.length;
+        const progress = Math.min(elapsed / effectiveTime, 1);
+        const stageIndex = Math.min(Math.floor(progress * (totalStages - 1)), totalStages - 1);
+        const timeLeft = Math.max(0, effectiveTime - elapsed);
+        return { stageIndex, totalStages, progress, timeLeft, isMature: stageIndex >= totalStages - 1 };
+      }
 
-    function showCards(ids) {
-        ['lobbyCard','roomCard','joinCard','chatCard'].forEach(id => {
-            const el = $(id);
-            if (ids.includes(id)) { el.classList.remove('hidden'); }
-            else { el.classList.add('hidden'); }
+      // ============================================================
+      // 状态管理
+      // ============================================================
+      function createInitialState() {
+        const plots = Array.from({ length: MAX_PLOTS }, () => ({ cropType: null, plantedAt: null }));
+        const storage = {};
+        Object.values(CROPS).forEach(c => { storage[c.name] = { normal: 0, star: 0, diamond: 0 }; });
+        const ranchPlots = Array.from({ length: RANCH_MAX_PLOTS }, () => ({ animalType: null, animals: [] }));
+        const ranchStorage = {};
+        Object.values(ANIMALS).forEach(a => {
+          if (a.produceType) ranchStorage[a.produceName] = { normal: 0, star: 0, diamond: 0 };
+          ranchStorage[a.slaughterName] = { normal: 0, star: 0, diamond: 0 };
+          if (a.furType === 'wool') ranchStorage[a.produceName] = { normal: 0, star: 0, diamond: 0 };
         });
-    }
+        return {
+          plots,
+          storage,
+          ranchPlots,
+          ranchStorage,
+          coins: 50,
+          weather: 'sunny',
+          selectedCrop: null,
+          selectedAnimal: null,
+          breedMode: false,
+          lastBreedAt: 0,
+          gameEpoch: Date.now(),
+          achievements: {},
+          totalHarvested: 0,
+          totalRanchHarvested: 0,
+          lastLat: null,
+          lastLon: null,
+          weatherLocked: false,
+          weatherCachedAt: null,
+          weatherCacheData: null,
+          unlockedPlots: INITIAL_UNLOCKED,
+          unlockCost: BASE_UNLOCK_COST,
+          ranchUnlockedPlots: RANCH_INITIAL_UNLOCKED,
+          ranchUnlockCost: RANCH_BASE_UNLOCK_COST,
+          unlockedCrops: { carrot: true },
+          unlockedAnimals: { chicken: true }
+        };
+      }
 
-    // ==================== QR Code ====================
-    function genQr(data, wrapId) {
-        const wrap = $(wrapId);
-        wrap.innerHTML = '';
-        wrap.classList.remove('hidden');
+      let state = createInitialState();
+      let lightningTimer = null;
+      let messageTimeout = null;
+
+      // ============================================================
+      // 存档系统
+      // ============================================================
+      function saveToLocalStorage() {
         try {
-            const qr = qrcode(0, 'M');
-            qr.addData(data);
-            qr.make();
-            const img = qr.createImgTag(4, 8);
-            wrap.innerHTML = img;
+          localStorage.setItem(SAVE_KEY, JSON.stringify(state));
         } catch (e) {
-            log('二维码生成失败', 'error');
-            wrap.classList.add('hidden');
+          console.warn('保存失败:', e);
         }
-    }
+      }
 
-    function toggleQr() {
-        const wrap = $('qrWrap');
-        if (wrap.classList.contains('hidden')) {
-            const sdp = $('roomSdp').value;
-            if (sdp) { genQr(sdp, 'qrWrap'); $('qrHint').classList.remove('hidden'); }
-        } else {
-            wrap.classList.add('hidden');
-            $('qrHint').classList.add('hidden');
-        }
-    }
-
-    // ==================== Room code ====================
-    function genRoomCode() {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        let code = '';
-        for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-        return code;
-    }
-
-    // ==================== BroadcastChannel ====================
-    function initBC() {
+      function loadFromLocalStorage() {
         try {
-            bc = new BroadcastChannel('p2p-lobby');
-            bc.onmessage = (e) => {
-                const m = e.data;
-                log(`收到广播: ${m.type}`, 'sys');
-                if (m.type === 'offer') {
-                    if (mode === 'join') { autoReceiveOffer(m.sdp); }
-                } else if (m.type === 'answer') {
-                    if (mode === 'room') { autoReceiveAnswer(m.sdp); }
-                }
-            };
-            log('同机自动信令已就绪', 'success');
-        } catch { log('同机自动信令不可用', 'info'); }
-    }
-
-    function broadcast(type, sdp) {
-        if (!bc) return;
-        try { bc.postMessage({ type, sdp }); } catch {}
-    }
-
-    // ==================== WebRTC ====================
-    function createPC() {
-        if (pc) { try { pc.close(); } catch {} }
-        pc = new RTCPeerConnection(cfg);
-
-        pc.onicecandidate = (e) => {
-            if (!e.candidate) {
-                const sdpStr = JSON.stringify(pc.localDescription);
-                if (mode === 'room') {
-                    $('roomSdp').value = sdpStr;
-                    $('sdpBox').classList.remove('hidden');
-                    genQr(sdpStr, 'qrWrap');
-                    $('qrHint').classList.remove('hidden');
-                    log('连接码已生成（已在二维码中）', 'success');
-                    broadcast('offer', sdpStr);
-                } else if (mode === 'join') {
-                    $('joinAnswerSdp').value = sdpStr;
-                    $('joinAnswerWrap').classList.remove('hidden');
-                    genQr(sdpStr, 'joinQrWrap');
-                    log('Answer 已生成，正在发送...', 'success');
-                    broadcast('answer', sdpStr);
-                }
+          const raw = localStorage.getItem(SAVE_KEY);
+          if (raw) {
+            const saved = JSON.parse(raw);
+            // 迁移旧存档 - 作物品质格式
+            if (saved.storage && typeof saved.storage['胡萝卜'] === 'number') {
+              const old = saved.storage;
+              saved.storage = {};
+              Object.values(CROPS).forEach(c => { saved.storage[c.name] = { normal: old[c.name] || 0, star: 0, diamond: 0 }; });
             }
-        };
-
-        pc.oniceconnectionstatechange = () => {
-            const s = pc.iceConnectionState;
-            log(`ICE: ${s}`, 'sys');
-            if (s === 'connected' || s === 'completed') {
-                connected = true;
-                setStatus('connected', '✅ P2P 已连接');
-                onConnected();
-            } else if (s === 'failed') {
-                setStatus('error', '❌ 连接失败');
-                connected = false;
-            } else if (s === 'disconnected' && connected) {
-                setStatus('error', '❌ 已断开');
-                connected = false;
-            }
-        };
-
-        pc.ondatachannel = (e) => setupDC(e.channel);
-        return pc;
-    }
-
-    function setupDC(channel) {
-        dc = channel;
-        dc.onopen = () => { log('DataChannel 打开', 'success'); connected = true; setStatus('connected', '✅ P2P 已连接'); onConnected(); };
-        dc.onclose = () => { /* handled by ice state */ };
-        dc.onmessage = (e) => {
-            const t = new Date().toLocaleTimeString();
-            log(`收到: ${e.data}`, 'success');
-            const d = document.createElement('div'); d.className = 'msg peer';
-            d.innerHTML = `对方: ${e.data} <span class="time">${t}</span>`;
-            $('chatMsgs').appendChild(d); $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
-        };
-    }
-
-    function onConnected() {
-        mode = 'chat';
-        showCards(['chatCard']);
-        log('🎉 P2P 直连成功！', 'success');
-    }
-
-    // ==================== 大厅 → 创建房间 ====================
-    function createRoom() {
-        mode = 'room';
-        roomCode = genRoomCode();
-        $('roomCode').textContent = roomCode;
-        $('roomCodeBox').classList.remove('hidden');
-        showCards(['lobbyCard', 'roomCard']);
-        // 重置
-        ['roomSdp','remoteAnswer'].forEach(id => $(id).value = '');
-        $('sdpBox').classList.add('hidden');
-        $('qrWrap').classList.add('hidden');
-        $('qrHint').classList.add('hidden');
-        $('manualAnswerWrap').classList.add('hidden');
-        $('genRoomBtn').classList.remove('hidden');
-        $('cancelRoomBtn').classList.remove('hidden');
-        $('copyLinkBtn').classList.add('hidden');
-        $('toggleQrBtn').classList.add('hidden');
-        setStatus('idle', '⏹ 点击生成连接码');
-        log('进入房间创建模式', 'sys');
-    }
-
-    async function startRoom() {
-        $('genRoomBtn').disabled = true;
-        $('genRoomBtn').textContent = '⏳ 生成中...';
-        setStatus('connecting', '⏳ 生成连接...');
-
-        try {
-            createPC();
-            dc = pc.createDataChannel('chat', { negotiated: true, id: 0 });
-            setupDC(dc);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            savedOffer = JSON.stringify(pc.localDescription);
-
-            // 预填（ICE 收集完后会更新完整版到 QR）
-            $('roomSdp').value = savedOffer;
-            $('sdpBox').classList.remove('hidden');
-
-            $('genRoomBtn').classList.add('hidden');
-            $('copyLinkBtn').classList.remove('hidden');
-            $('toggleQrBtn').classList.remove('hidden');
-            $('manualAnswerWrap').classList.remove('hidden');
-
-            log('连接码已生成，对方扫码或粘贴即可加入', 'success');
-        } catch (err) {
-            log(`创建失败: ${err.message}`, 'error');
-            setStatus('error', '❌ 创建失败');
-            $('genRoomBtn').disabled = false;
-            $('genRoomBtn').textContent = '⚡ 生成连接码';
-        }
-    }
-
-    function cancelRoom() {
-        cleanup();
-        mode = 'lobby';
-        showCards(['lobbyCard']);
-        setStatus('idle', '⏹ 已取消');
-        log('已取消', 'sys');
-    }
-
-    // ==================== 大厅 → 加入房间 ====================
-    function showJoin() {
-        mode = 'join';
-        showCards(['lobbyCard', 'joinCard']);
-        ['joinCode','remoteOffer','joinAnswerSdp'].forEach(id => $(id).value = '');
-        $('joinAnswerWrap').classList.add('hidden');
-        setStatus('idle', '⏹ 等待输入连接码');
-        log('进入加入房间模式', 'sys');
-    }
-
-    async function joinByCode() {
-        const code = $('joinCode').value.trim();
-        if (!code) { log('请粘贴连接码', 'error'); return; }
-        await doJoin(code);
-    }
-
-    async function joinManual() {
-        const txt = $('remoteOffer').value.trim();
-        if (!txt) { log('请粘贴 Offer SDP', 'error'); return; }
-        await doJoin(txt);
-    }
-
-    async function doJoin(sdp) {
-        setStatus('connecting', '⏳ 加入房间...');
-        log('处理连接码...', 'info');
-        try {
-            const desc = JSON.parse(sdp);
-            createPC();
-            await pc.setRemoteDescription(new RTCSessionDescription(desc));
-            log('远程 Offer 已设置', 'info');
-
-            dc = pc.createDataChannel('chat', { negotiated: true, id: 0 });
-            setupDC(dc);
-
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            log('Answer 已生成', 'info');
-        } catch (err) {
-            log(`加入失败: ${err.message}`, 'error');
-            setStatus('error', '❌ 加入失败');
-        }
-    }
-
-    // ==================== Auto receive (BroadcastChannel) ====================
-    async function autoReceiveOffer(sdp) {
-        log('自动接收 Offer...', 'info');
-        $('joinCode').value = sdp;
-        await doJoin(sdp);
-    }
-
-    async function autoReceiveAnswer(sdp) {
-        log('自动接收 Answer...', 'info');
-        $('remoteAnswer').value = sdp;
-        await doReceiveAnswer(sdp);
-    }
-
-    // ==================== Manual receive Answer ====================
-    async function receiveAnswer() {
-        const txt = $('remoteAnswer').value.trim();
-        if (!txt) { log('请粘贴 Answer SDP', 'error'); return; }
-        await doReceiveAnswer(txt);
-    }
-
-    async function doReceiveAnswer(sdp) {
-        if (!pc) { log('连接失效，请取消后重试', 'error'); setStatus('error'); return; }
-        log(`信令状态: ${pc.signalingState}`, 'sys');
-
-        if (pc.signalingState !== 'have-local-offer') {
-            log(`状态异常 (${pc.signalingState})，尝试恢复...`, 'warning');
-            if (savedOffer) {
-                try {
-                    const old = pc; pc = null; try { old.close(); } catch {}
-                    createPC();
-                    dc = pc.createDataChannel('chat', { negotiated: true, id: 0 });
-                    setupDC(dc);
-                    await pc.setLocalDescription(new RTCSessionDescription(JSON.parse(savedOffer)));
-                    log('状态已恢复', 'success');
-                } catch (e) {
-                    log(`恢复失败: ${e.message}，请取消重试`, 'error');
-                    setStatus('error'); return;
+            // 迁移旧存档 - 牧场动物改为独立个体
+            if (saved.ranchPlots && saved.ranchPlots[0] && typeof saved.ranchPlots[0].count === 'number') {
+              saved.ranchPlots = saved.ranchPlots.map(p => {
+                if (p.animalType && p.count > 0) {
+                  const animals = [];
+                  for (let i = 0; i < p.count; i++) {
+                    animals.push({
+                      bredAt: (p.bredAt || Date.now()),
+                      lastProduceAt: null
+                    });
+                  }
+                  return { animalType: p.animalType, animals };
                 }
+                return { animalType: null, animals: [] };
+              });
+            }
+            const initState = createInitialState();
+            state = { ...initState, ...saved, plots: saved.plots || initState.plots, storage: saved.storage || initState.storage, ranchPlots: saved.ranchPlots || initState.ranchPlots, ranchStorage: saved.ranchStorage || initState.ranchStorage };
+            return true;
+          }
+        } catch (e) {
+          console.warn('读取存档失败:', e);
+        }
+        return false;
+      }
+
+      function exportSave() {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'weather-farm-save.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showMessage('✅ 存档已导出', 'success');
+      }
+
+      function importSave(file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (!data.plots || !Array.isArray(data.plots)) throw new Error('无效的存档文件');
+            const initState = createInitialState();
+            state = { ...initState, ...data, plots: data.plots, storage: data.storage || initState.storage, ranchPlots: data.ranchPlots || initState.ranchPlots, ranchStorage: data.ranchStorage || initState.ranchStorage };
+            saveToLocalStorage();
+            fullRender();
+            showMessage('✅ 存档已导入', 'success');
+          } catch (e) {
+            showMessage('❌ 导入失败：文件格式错误', 'error');
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function resetGame() {
+        if (!confirm('确定要重置游戏吗？所有数据将丢失！')) return;
+        state = createInitialState();
+        localStorage.removeItem(SAVE_KEY);
+        fullRender();
+        showMessage('🔄 已重置游戏', 'info');
+      }
+
+      // ============================================================
+      // 消息系统
+      // ============================================================
+      function showMessage(text, type) {
+        const el = $('#messageHint');
+        if (!el) return;
+        el.textContent = text;
+        el.style.color = type === 'success' ? '#2ecc71' : type === 'error' ? '#e74c3c' : '#85c1e9';
+        if (messageTimeout) clearTimeout(messageTimeout);
+        messageTimeout = setTimeout(() => {
+          const isFarm = $('#farmGrid').style.display !== 'none';
+          el.textContent = isFarm ? '🌱 点击种子，再点空地种植' : '🐾 点击动物购入，右键屠宰';
+          el.style.color = 'rgba(224,224,224,0.6)';
+        }, 3000);
+      }
+
+      // ============================================================
+      // 渲染函数
+      // ============================================================
+      function renderFarm() {
+        const grid = $('#farmGrid');
+        if (!grid) return;
+        grid.innerHTML = state.plots.map((plot, index) => {
+          if (index >= state.unlockedPlots) {
+            const cost = state.unlockCost + (index - state.unlockedPlots) * Math.round(state.unlockCost * 0.5);
+            return `<div class="plot locked" data-index="${index}" data-unlock-cost="${cost}">🔒<br><small>💰${cost}</small></div>`;
+          }
+          const stageInfo = getCropStage(plot, state);
+          let content = '';
+          if (plot.cropType && stageInfo) {
+            const crop = CROPS[plot.cropType];
+            const currentEmoji = crop.stages[stageInfo.stageIndex];
+            const dots = crop.stages.map((_, i) => {
+              let cls = 'stage-dot';
+              if (i < stageInfo.stageIndex) cls += ' filled';
+              else if (i === stageInfo.stageIndex) cls += ' current';
+              return `<span class="${cls}"></span>`;
+            }).join('');
+            const label = stageInfo.isMature ?
+              '<span class="ready-label">🍂 可收获</span>' :
+              `<span class="grow-timer">${formatTimeLeft(stageInfo.timeLeft)}</span>`;
+            content = `<span class="crop-emoji">${currentEmoji}</span><div class="stage-bar">${dots}</div>${label}`;
+          } else {
+            content = '<span class="plus-icon">➕</span>';
+          }
+          return `<div class="plot ${plot.cropType ? 'has-crop' : ''}" data-index="${index}">${content}</div>`;
+        }).join('');
+
+        grid.onclick = (e) => {
+          const plotEl = e.target.closest('.plot');
+          if (!plotEl) return;
+          if (plotEl.classList.contains('locked')) {
+            const cost = parseInt(plotEl.dataset.unlockCost);
+            if (state.coins < cost) {
+              showMessage(`💰 金币不足，需要 ${cost}💰`, 'error');
+              return;
+            }
+            state.coins -= cost;
+            state.unlockedPlots += 1;
+            state.unlockCost = Math.round(state.unlockCost * UNLOCK_COST_MULTIPLIER);
+            checkAchievements();
+            saveToLocalStorage();
+            fullRender();
+            showMessage('🔓 解锁了新地块！', 'success');
+            return;
+          }
+          handlePlotClick(parseInt(plotEl.dataset.index));
+        };
+      }
+
+      function renderRanch() {
+        const grid = $('#ranchGrid');
+        if (!grid) return;
+        const now = Date.now();
+        grid.innerHTML = state.ranchPlots.map((plot, index) => {
+          if (index >= state.ranchUnlockedPlots) {
+            const cost = state.ranchUnlockCost + (index - state.ranchUnlockedPlots) * Math.round(state.ranchUnlockCost * 0.5);
+            return `<div class="ranch-plot locked" data-ranch-index="${index}" data-unlock-cost="${cost}">🔒<br><small>💰${cost}</small></div>`;
+          }
+          if (plot.animalType && plot.animals && plot.animals.length > 0) {
+            const animal = ANIMALS[plot.animalType];
+            if (!animal) return `<div class="ranch-plot" data-ranch-index="${index}"><span class="ranch-plus-icon">❓</span></div>`;
+
+            // Count growing vs ready-to-produce
+            let growingCount = 0;
+            let maxGrowTimeLeft = 0;
+            let readyProduceCount = 0;
+            let nextProduceTimeLeft = Infinity;
+
+            plot.animals.forEach(a => {
+              const isGrown = now - a.bredAt >= animal.breedTime;
+              if (!isGrown) {
+                growingCount++;
+                const timeLeft = animal.breedTime - (now - a.bredAt);
+                if (timeLeft > maxGrowTimeLeft) maxGrowTimeLeft = timeLeft;
+              } else if (animal.produceType) {
+                const elapsed = a.lastProduceAt ? now - a.lastProduceAt : Math.max(0, now - a.bredAt - animal.breedTime);
+                if (elapsed >= animal.produceInterval) {
+                  readyProduceCount++;
+                } else {
+                  const timeLeft = animal.produceInterval - elapsed;
+                  if (timeLeft < nextProduceTimeLeft) nextProduceTimeLeft = timeLeft;
+                }
+              }
+            });
+
+            let growLabel = '';
+            if (growingCount > 0) {
+              growLabel = `<span class="grow-timer" style="font-size:0.6rem;">⏳ ${formatTimeLeft(maxGrowTimeLeft)}</span>`;
+            }
+
+            let produceLabel = '';
+            if (readyProduceCount > 0) {
+              produceLabel = `<span class="ranch-produce-ready">${animal.produceEmoji}×${readyProduceCount}</span>`;
+            } else if (nextProduceTimeLeft < Infinity && animal.produceType) {
+              produceLabel = `<span class="ranch-produce-ready">⏳ ${formatTimeLeft(nextProduceTimeLeft)}</span>`;
+            }
+
+            // Render emojis (max RANCH_MAX_PER_PLOT)
+            const emojis = plot.animals.slice(0, RANCH_MAX_PER_PLOT).map((a, i) => {
+              const isGrown = now - a.bredAt >= animal.breedTime;
+              const path = (i % 4) + 1;
+              const dur = (2 + Math.random() * 2).toFixed(1);
+              const delay = (Math.random() * 2).toFixed(1);
+              const emoji = isGrown ? animal.emoji : '🐤';
+              return `<span class="ranch-animal-emoji" style="animation:wander${path} ${dur}s ease-in-out infinite;animation-delay:${delay}s">${emoji}</span>`;
+            }).join('');
+
+            const countLabel = plot.animals.length > RANCH_MAX_PER_PLOT
+              ? `<span class="ranch-count-badge">+${plot.animals.length - RANCH_MAX_PER_PLOT}</span>` : '';
+
+            return `<div class="ranch-plot has-crop" data-ranch-index="${index}">
+              <div class="ranch-emoji-container">${emojis}</div>
+              ${countLabel}
+              ${growLabel}
+              ${produceLabel}
+            </div>`;
+          } else {
+            return `<div class="ranch-plot" data-ranch-index="${index}">
+              <span class="ranch-plus-icon">➕</span>
+            </div>`;
+          }
+        }).join('');
+
+        grid.onclick = (e) => {
+          const plotEl = e.target.closest('.ranch-plot');
+          if (!plotEl) return;
+          if (plotEl.classList.contains('locked')) {
+            const cost = parseInt(plotEl.dataset.unlockCost);
+            if (state.coins < cost) {
+              showMessage(`💰 金币不足，需要 ${cost}💰`, 'error');
+              return;
+            }
+            state.coins -= cost;
+            state.ranchUnlockedPlots += 1;
+            state.ranchUnlockCost = Math.round(state.ranchUnlockCost * RANCH_UNLOCK_COST_MULTIPLIER);
+            checkAchievements();
+            saveToLocalStorage();
+            fullRender();
+            showMessage('🔓 解锁了牧场新栏位！', 'success');
+            return;
+          }
+          handleRanchPlotClick(parseInt(plotEl.dataset.ranchIndex));
+        };
+
+        grid.oncontextmenu = (e) => {
+          e.preventDefault();
+          const plotEl = e.target.closest('.ranch-plot');
+          if (plotEl && !plotEl.classList.contains('locked')) {
+            slaughterAnimal(parseInt(plotEl.dataset.ranchIndex));
+          }
+        };
+      }
+
+      function renderAnimalShop() {
+        const container = $('#animalBar');
+        if (!container) return;
+        container.innerHTML = Object.entries(ANIMALS).map(([key, animal]) => {
+          const unlocked = state.unlockedAnimals[key];
+          if (!unlocked) {
+            return `<button class="seed-btn unlock-btn" data-animal="${key}" data-unlock="true">
+              <span class="seed-name">${animal.emoji} ${animal.name}</span>
+              <span class="seed-cost">🔒 💰${animal.unlockCost}</span>
+            </button>`;
+          }
+          const disabled = state.coins < animal.cost;
+          const selected = state.selectedAnimal === key;
+          return `<button class="seed-btn ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" 
+            data-animal="${key}" ${disabled ? 'disabled' : ''}>
+            <span class="seed-name">${animal.emoji} ${animal.name}</span>
+            <span class="seed-cost">💰${animal.cost}</span>
+          </button>`;
+        }).join('');
+
+        container.querySelectorAll('.seed-btn.unlock-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const animalKey = btn.dataset.animal;
+            const animal = ANIMALS[animalKey];
+            if (state.coins < animal.unlockCost) {
+              showMessage('💰 金币不够解锁！', 'error');
+              return;
+            }
+            state.coins -= animal.unlockCost;
+            state.unlockedAnimals[animalKey] = true;
+            saveToLocalStorage();
+            fullRender();
+            showMessage(`🔓 解锁了${animal.emoji}${animal.name}！`, 'success');
+          });
+        });
+
+        container.querySelectorAll('.seed-btn:not(.disabled):not(.unlock-btn)').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const animalKey = btn.dataset.animal;
+            state.selectedAnimal = state.selectedAnimal === animalKey ? null : animalKey;
+            renderAnimalShop();
+          });
+        });
+      }
+
+      function renderSeedBar() {
+        const container = $('#seedBar');
+        if (!container) return;
+        container.innerHTML = Object.entries(CROPS).map(([key, crop]) => {
+          const unlocked = state.unlockedCrops[key];
+          if (!unlocked) {
+            return `<button class="seed-btn unlock-btn" data-crop="${key}" data-unlock="true">
+              <span class="seed-name">${crop.emoji} ${crop.name}</span>
+              <span class="seed-cost">🔒 💰${crop.unlockCost}</span>
+            </button>`;
+          }
+          const disabled = state.coins < crop.cost;
+          const selected = state.selectedCrop === key;
+          return `<button class="seed-btn ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" 
+            data-crop="${key}" ${disabled ? 'disabled' : ''}>
+            <span class="seed-name">${crop.emoji} ${crop.name}</span>
+            <span class="seed-cost">💰${crop.cost}</span>
+          </button>`;
+        }).join('');
+
+        container.querySelectorAll('.seed-btn.unlock-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const cropKey = btn.dataset.crop;
+            const crop = CROPS[cropKey];
+            if (state.coins < crop.unlockCost) {
+              showMessage('💰 金币不够解锁！', 'error');
+              return;
+            }
+            state.coins -= crop.unlockCost;
+            state.unlockedCrops[cropKey] = true;
+            saveToLocalStorage();
+            fullRender();
+            showMessage(`🔓 解锁了${crop.emoji}${crop.name}！`, 'success');
+          });
+        });
+
+        container.querySelectorAll('.seed-btn:not(.disabled):not(.unlock-btn)').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const cropKey = btn.dataset.crop;
+            state.selectedCrop = state.selectedCrop === cropKey ? null : cropKey;
+            renderSeedBar();
+          });
+        });
+      }
+
+      function renderStatusBar() {
+        const coinsEl = $('#coinsDisplay');
+        const dayEl = $('#dayDisplay');
+        const timeEl = $('#timeDisplay');
+        if (coinsEl) coinsEl.textContent = state.coins;
+        if (dayEl) {
+          const gameHour = getGameHour(state);
+          const days = Math.floor(gameHour / 24) + 1;
+          dayEl.textContent = `第${days}天`;
+        }
+        if (timeEl) {
+          const gameHour = getGameHour(state);
+          const h = Math.floor(gameHour % 24);
+          const m = Math.floor((gameHour % 1) * 60);
+          timeEl.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+      }
+
+      function renderAchievements() {
+        const container = $('#achievementsArea');
+        if (!container) return;
+        container.innerHTML = ACHIEVEMENTS.map(a => {
+          const unlocked = state.achievements[a.id];
+          return `<span class="achievement-badge ${unlocked ? 'unlocked' : 'locked'}" 
+            data-achievement-id="${a.id}"
+            data-name="${a.name}"
+            data-desc="${a.desc}"
+            data-icon="${a.icon}">
+            ${unlocked ? a.icon : '🔒'}
+          </span>`;
+        }).join('');
+      }
+
+      function renderStorage() {
+        const container = $('#storageBody');
+        if (!container) return;
+        const hasAnyCrop = Object.values(state.storage).some(q => q.normal > 0 || q.star > 0 || q.diamond > 0);
+        const hasAnyRanch = Object.values(state.ranchStorage).some(q => q.normal > 0 || q.star > 0 || q.diamond > 0);
+        if (!hasAnyCrop && !hasAnyRanch) {
+          container.innerHTML = '<div class="storage-empty"><div style="font-size:48px;margin-bottom:12px;">📦</div><div>仓库空空如也~</div><div style="font-size:12px;color:#888;margin-top:8px;">快去种植收获吧！</div></div>';
+          return;
+        }
+        let html = '<div class="storage-grid">';
+        // 作物
+        if (hasAnyCrop) {
+          html += '<div style="grid-column:1/-1;font-size:13px;color:#85c1e9;margin-top:4px;">🌾 农作物</div>';
+          html += Object.entries(state.storage)
+            .filter(([, qual]) => qual.normal > 0 || qual.star > 0 || qual.diamond > 0)
+            .map(([name, qual]) => {
+              const crop = Object.values(CROPS).find(c => c.name === name);
+              const cropKey = Object.keys(CROPS).find(k => CROPS[k].name === name) || '';
+              const emoji = crop ? crop.emoji : '❓';
+              const total = qual.normal + qual.star + qual.diamond;
+              let qualityItems = [];
+              if (qual.normal > 0) qualityItems.push(makeQualityItem(cropKey, 'normal', qual.normal, crop.value));
+              if (qual.star > 0) qualityItems.push(makeQualityItem(cropKey, 'star', qual.star, crop.value, 'star'));
+              if (qual.diamond > 0) qualityItems.push(makeQualityItem(cropKey, 'diamond', qual.diamond, crop.value, 'diamond'));
+              return `<div class="storage-crop-card">
+                <div class="crop-card-header">
+                  <span class="crop-emoji">${emoji}</span>
+                  <span class="crop-name">${name}</span>
+                  <button class="sell-all-btn" data-crop="${cropKey}">💰 一键出售</button>
+                  <span class="crop-total">共 ${total} 个</span>
+                </div>
+                <div class="crop-card-actions">${qualityItems.join('')}</div>
+              </div>`;
+            }).join('');
+        }
+        // 动物产物
+        if (hasAnyRanch) {
+          html += '<div style="grid-column:1/-1;font-size:13px;color:#f0b27a;margin-top:4px;">🐄 动物产物</div>';
+          html += Object.entries(state.ranchStorage)
+            .filter(([, qual]) => qual.normal > 0 || qual.star > 0 || qual.diamond > 0)
+            .map(([name, qual]) => {
+              const animal = Object.values(ANIMALS).find(a => a.produceName === name || a.slaughterName === name);
+              const emoji = animal ? (animal.produceName === name ? animal.produceEmoji : animal.slaughterEmoji) : '❓';
+              const total = qual.normal + qual.star + qual.diamond;
+              const baseValue = animal ? (animal.produceName === name ? animal.produceValue : animal.slaughterValue) : 10;
+              let qualityItems = [];
+              if (qual.normal > 0) qualityItems.push(makeAnimalQualityItem(name, 'normal', qual.normal, baseValue));
+              if (qual.star > 0) qualityItems.push(makeAnimalQualityItem(name, 'star', qual.star, baseValue, 'star'));
+              if (qual.diamond > 0) qualityItems.push(makeAnimalQualityItem(name, 'diamond', qual.diamond, baseValue, 'diamond'));
+              return `<div class="storage-crop-card">
+                <div class="crop-card-header">
+                  <span class="crop-emoji">${emoji}</span>
+                  <span class="crop-name">${name}</span>
+                  <button class="sell-all-btn" data-ranch="${name}">💰 一键出售</button>
+                  <span class="crop-total">共 ${total} 个</span>
+                </div>
+                <div class="crop-card-actions">${qualityItems.join('')}</div>
+              </div>`;
+            }).join('');
+        }
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      function makeQualityItem(cropKey, quality, count, baseValue, extraClass = '') {
+        const mult = QUALITY_MAP[quality].multiplier;
+        const price = Math.round(baseValue * mult);
+        const prefix = quality === 'star' ? '⭐' : quality === 'diamond' ? '💎' : '';
+        return `<div class="storage-quality-item ${extraClass}" data-crop="${cropKey}" data-quality="${quality}">
+          <span class="quality-count">${prefix}×${count}</span>
+          <span class="quality-price">💰${price}</span>
+          <span class="quality-action">出售</span>
+        </div>`;
+      }
+
+      function makeAnimalQualityItem(productName, quality, count, baseValue, extraClass = '') {
+        const mult = QUALITY_MAP[quality].multiplier;
+        const price = Math.round(baseValue * mult);
+        const prefix = quality === 'star' ? '⭐' : quality === 'diamond' ? '💎' : '';
+        return `<div class="storage-quality-item ${extraClass}" data-ranch="${productName}" data-quality="${quality}">
+          <span class="quality-count">${prefix}×${count}</span>
+          <span class="quality-price">💰${price}</span>
+          <span class="quality-action">出售</span>
+        </div>`;
+      }
+
+      function sellAnimalProduct(productName, quality) {
+        const qual = state.ranchStorage[productName];
+        if (!qual || qual[quality] <= 0) return;
+        const animal = Object.values(ANIMALS).find(a => a.produceName === productName || a.slaughterName === productName);
+        const baseValue = animal ? (animal.produceName === productName ? animal.produceValue : animal.slaughterValue) : 10;
+        const price = Math.round(baseValue * QUALITY_MAP[quality].multiplier);
+        qual[quality] -= 1;
+        state.coins += price;
+        saveToLocalStorage();
+        fullRender();
+        renderStorage();
+        showMessage(`💰 出售了 ${productName}，获得 ${price}💰`, 'success');
+      }
+
+      function sellAllAnimalProduct(productName) {
+        const qual = state.ranchStorage[productName];
+        if (!qual) return;
+        const total = qual.normal + qual.star + qual.diamond;
+        if (total <= 0) return;
+        const animal = Object.values(ANIMALS).find(a => a.produceName === productName || a.slaughterName === productName);
+        const baseValue = animal ? (animal.produceName === productName ? animal.produceValue : animal.slaughterValue) : 10;
+        let totalPrice = qual.normal * baseValue + qual.star * baseValue * 2 + qual.diamond * baseValue * 5;
+        qual.normal = qual.star = qual.diamond = 0;
+        state.coins += totalPrice;
+        saveToLocalStorage();
+        fullRender();
+        renderStorage();
+        showMessage(`💰 全部出售了 ${total} 个${productName}，获得 ${totalPrice}💰`, 'success');
+      }
+
+      function renderHandBook() {
+        const container = $('#handbookBody');
+        if (!container) return;
+        const cropEntries = Object.entries(CROPS).map(([key, crop]) => {
+          const qual = state.storage[crop.name];
+          const totalHarvested = qual ? qual.normal + qual.star + qual.diamond : 0;
+          const unlocked = totalHarvested > 0;
+          const stageLabels = ['种子', '发芽', '生长', '成熟'];
+          return `<div class="handbook-entry ${unlocked ? 'unlocked' : 'locked'}">
+            <div class="entry-header">
+              <span>${crop.emoji}</span>
+              <span class="entry-name">${crop.name}</span>
+              <span class="entry-status">${unlocked ? '✓ 已解锁' : '🔒 未解锁'}</span>
+            </div>
+            <div class="handbook-stages">
+              ${crop.stages.map((emoji, i) => `
+                <div class="handbook-stage"><span class="stage-emoji">${emoji}</span><span class="stage-label">${stageLabels[i]}</span></div>
+              `).join('')}
+            </div>
+            ${unlocked ? `<div class="entry-harvest">📊 已收获 ${totalHarvested} 个（⭐${qual.star} 💎${qual.diamond}）</div>` : ''}
+          </div>`;
+        }).join('');
+
+        const animalEntries = Object.entries(ANIMALS).map(([key, animal]) => {
+          const owned = state.ranchPlots.filter(p => p.animalType === key).reduce((sum, p) => sum + (p.animals?.length || 0), 0);
+          const unlocked = owned > 0 || Object.keys(state.ranchStorage).some(n => {
+            const a = Object.values(ANIMALS).find(v => v.produceName === n || v.slaughterName === n);
+            return a && a.name === animal.name && (state.ranchStorage[n].normal + state.ranchStorage[n].star + state.ranchStorage[n].diamond) > 0;
+          });
+          let parts = [];
+          if (animal.produceType) parts.push(`可产出${animal.produceEmoji}${animal.produceName}`);
+          parts.push(`屠宰得${animal.slaughterEmoji}${animal.slaughterName}`);
+          if (animal.furType === 'wool') parts.push(`+🧶羊毛`);
+          return `<div class="handbook-entry ${unlocked ? 'unlocked' : 'locked'}">
+            <div class="entry-header">
+              <span>${animal.emoji}</span>
+              <span class="entry-name">${animal.name}</span>
+              <span class="entry-status">${unlocked ? '✓ 已解锁' : '🔒 未解锁'}</span>
+            </div>
+            <div class="handbook-stages">
+              <div class="handbook-stage"><span class="stage-emoji">${animal.emoji}</span><span class="stage-label">幼崽</span></div>
+              <div class="handbook-stage"><span class="stage-emoji">⏳</span><span class="stage-label">${Math.round(animal.breedTime/60000)}分</span></div>
+              <div class="handbook-stage"><span class="stage-emoji">${animal.emoji}</span><span class="stage-label">成年</span></div>
+            </div>
+            ${unlocked ? `<div class="entry-harvest">🐾 已拥有 ${owned} 只 — ${parts.join('，')}</div>` : ''}
+          </div>`;
+        }).join('');
+
+        container.innerHTML = cropEntries + animalEntries;
+      }
+
+      function fullRender() {
+        renderFarm();
+        renderSeedBar();
+        renderAnimalShop();
+        renderRanch();
+        renderStatusBar();
+        renderAchievements();
+      }
+
+      // ============================================================
+      // 核心交互
+      // ============================================================
+      function handlePlotClick(index) {
+        if (index >= state.unlockedPlots) return;
+        const plot = state.plots[index];
+        const stageInfo = plot.cropType ? getCropStage(plot, state) : null;
+
+        if (state.selectedCrop && !plot.cropType) {
+          const crop = CROPS[state.selectedCrop];
+          if (state.coins < crop.cost) {
+            showMessage('💰 金币不够啦！', 'error');
+            return;
+          }
+          state.coins -= crop.cost;
+          plot.cropType = state.selectedCrop;
+          plot.plantedAt = Date.now();
+          saveToLocalStorage();
+          fullRender();
+          showMessage(`🌱 种下了${crop.emoji}${crop.name}！`, 'success');
+          return;
+        }
+
+        if (plot.cropType && stageInfo?.isMature) {
+          const crop = CROPS[plot.cropType];
+          const dropCount = crop.dropMin + Math.floor(Math.random() * (crop.dropMax - crop.dropMin + 1));
+          let starCount = 0, diamondCount = 0;
+          for (let i = 0; i < dropCount; i++) {
+            const quality = rollQuality();
+            state.storage[crop.name][quality] += 1;
+            state.totalHarvested += 1;
+            if (quality === 'star') starCount++;
+            if (quality === 'diamond') diamondCount++;
+          }
+          checkAchievements();
+          let msg = `🎉 收获了 ${crop.emoji}${crop.name} ×${dropCount}`;
+          if (starCount) msg += ` ⭐${starCount}`;
+          if (diamondCount) msg += ` 💎${diamondCount}`;
+          showMessage(msg + '！已入库', 'success');
+          plot.cropType = null;
+          plot.plantedAt = null;
+          saveToLocalStorage();
+          fullRender();
+          return;
+        }
+
+        if (plot.cropType && stageInfo && !stageInfo.isMature) {
+          showMessage(`⏳ 再等等~ ${formatTimeLeft(stageInfo.timeLeft)} 后成熟`, 'info');
+          return;
+        }
+
+        showMessage('🌱 先点击种子选择要种的作物', 'info');
+      }
+
+      function sellCrop(cropKey, quality) {
+        const crop = CROPS[cropKey];
+        if (!crop) return;
+        const qual = state.storage[crop.name];
+        if (!qual || qual[quality] <= 0) return;
+        const price = Math.round(crop.value * QUALITY_MAP[quality].multiplier);
+        qual[quality] -= 1;
+        state.coins += price;
+        saveToLocalStorage();
+        fullRender();
+        renderStorage();
+        showMessage(`💰 出售了 ${crop.emoji}${crop.name}，获得 ${price}💰`, 'success');
+      }
+
+      function sellAllCrop(cropKey) {
+        const crop = CROPS[cropKey];
+        if (!crop) return;
+        const qual = state.storage[crop.name];
+        const total = qual.normal + qual.star + qual.diamond;
+        if (total <= 0) return;
+        let totalPrice = qual.normal * crop.value + qual.star * crop.value * 2 + qual.diamond * crop.value * 5;
+        qual.normal = qual.star = qual.diamond = 0;
+        state.coins += totalPrice;
+        saveToLocalStorage();
+        fullRender();
+        renderStorage();
+        showMessage(`💰 全部出售了 ${total} 个${crop.emoji}${crop.name}，获得 ${totalPrice}💰`, 'success');
+      }
+
+      // ============================================================
+      // 牧场交互
+      // ============================================================
+      function handleRanchPlotClick(index) {
+        if (index >= state.ranchUnlockedPlots) return;
+        const plot = state.ranchPlots[index];
+        const now = Date.now();
+
+        // Breed mode: if player clicked a plot, try to breed
+        if (state.breedMode) {
+          state.breedMode = false;
+          $('#breedBtn').textContent = '🐣 繁殖动物';
+          if (plot.animalType) {
+            breedAnimal(index);
+          } else {
+            showMessage('🐾 选择一个有动物的栏位', 'info');
+          }
+          return;
+        }
+
+        // If selected animal matches existing animal in plot, add one more
+        if (state.selectedAnimal && plot.animalType === state.selectedAnimal) {
+          const animal = ANIMALS[state.selectedAnimal];
+          if (plot.animals.length >= RANCH_MAX_PER_PLOT) {
+            showMessage(`🐾 该栏位已满（最多${RANCH_MAX_PER_PLOT}只）`, 'info');
+            return;
+          }
+          if (state.coins < animal.cost) {
+            showMessage('💰 金币不够啦！', 'error');
+            return;
+          }
+          state.coins -= animal.cost;
+          plot.animals.push({ bredAt: now, lastProduceAt: null });
+          saveToLocalStorage();
+          fullRender();
+          renderAnimalShop();
+          showMessage(`🐾 又购入1只${animal.emoji}${animal.name}！（共${plot.animals.length}只）`, 'success');
+          return;
+        }
+
+        // If an animal is selected and plot is empty, buy and place
+        if (state.selectedAnimal && !plot.animalType) {
+          const animal = ANIMALS[state.selectedAnimal];
+          if (state.coins < animal.cost) {
+            showMessage('💰 金币不够啦！', 'error');
+            return;
+          }
+          state.coins -= animal.cost;
+          plot.animalType = state.selectedAnimal;
+          plot.animals = [{ bredAt: now, lastProduceAt: null }];
+          saveToLocalStorage();
+          fullRender();
+          renderAnimalShop();
+          showMessage(`🐾 购买了${animal.emoji}${animal.name}！`, 'success');
+          return;
+        }
+
+        // If animal exists, check for produce collection
+        if (plot.animalType) {
+          const animal = ANIMALS[plot.animalType];
+          // Collect from ALL adult animals with produce ready
+          let collectedCount = 0;
+          let produceName = '';
+          for (const a of plot.animals) {
+            if (now - a.bredAt >= animal.breedTime) {
+              const elapsed = a.lastProduceAt ? now - a.lastProduceAt : Math.max(0, now - a.bredAt - animal.breedTime);
+              if (animal.produceType && elapsed >= animal.produceInterval) {
+                collectAnimalProduce(index, a);
+                collectedCount++;
+                produceName = `${animal.produceEmoji}${animal.produceName}`;
+              }
+            }
+          }
+          if (collectedCount > 0) {
+            showMessage(`🥛 收获了 ${collectedCount} 个${produceName}！已入库`, 'success');
+            saveToLocalStorage();
+            fullRender();
+            return;
+          }
+          // Check if any are still growing
+          const growing = plot.animals.find(a => now - a.bredAt < animal.breedTime);
+          if (growing) {
+            const timeLeft = animal.breedTime - (now - growing.bredAt);
+            showMessage(`⏳ 幼崽成长中~ ${formatTimeLeft(timeLeft)}`, 'info');
+            return;
+          }
+          // All grown, no produce ready
+          const hint = animal.produceType ? '左键收产物 / 右键屠宰' : '右键屠宰';
+          showMessage(`🐾 ${animal.emoji}${animal.name} - ${hint}`, 'info');
+          return;
+        }
+
+        showMessage('🐾 先选择动物再放入牧场', 'info');
+      }
+
+      function collectAnimalProduce(plotIndex, animalData) {
+        const plot = state.ranchPlots[plotIndex];
+        const animal = ANIMALS[plot.animalType];
+        const quality = rollQuality();
+        state.ranchStorage[animal.produceName][quality] += 1;
+        state.totalRanchHarvested += 1;
+        animalData.lastProduceAt = Date.now();
+        checkAchievements();
+      }
+
+      function slaughterAnimal(plotIndex) {
+        const plot = state.ranchPlots[plotIndex];
+        if (!plot.animalType || plot.animals.length === 0) return;
+        const animal = ANIMALS[plot.animalType];
+        const now = Date.now();
+
+        // Find oldest adult animal to slaughter
+        const adultIdx = plot.animals.findIndex(a => now - a.bredAt >= animal.breedTime);
+        if (adultIdx === -1) {
+          showMessage('⏳ 没有成年动物可以宰杀', 'info');
+          return;
+        }
+
+        const quality = rollQuality();
+        const qInfo = QUALITY_MAP[quality];
+        state.ranchStorage[animal.slaughterName][quality] += 1;
+        state.totalRanchHarvested += 1;
+        // Also give fur if applicable
+        if (animal.furType === 'wool') {
+          const furQuality = rollQuality();
+          state.ranchStorage[animal.produceName][furQuality] += 1;
+          state.totalRanchHarvested += 1;
+        }
+        checkAchievements();
+        const qualityTag = qInfo.emoji ? ` ${qInfo.emoji}${qInfo.label}` : '';
+        let msg = `🔪 宰杀了1只${animal.emoji}${animal.name}，获得 ${animal.slaughterEmoji}${animal.slaughterName}${qualityTag}`;
+        if (animal.furType === 'wool') msg += ` + 🧶羊毛`;
+
+        plot.animals.splice(adultIdx, 1);
+        if (plot.animals.length === 0) {
+          plot.animalType = null;
+        }
+        showMessage(msg + `（剩余${plot.animals.length}只）`, 'success');
+        saveToLocalStorage();
+        fullRender();
+      }
+
+      function breedAnimal(plotIndex) {
+        const plot = state.ranchPlots[plotIndex];
+        if (!plot.animalType) return;
+        const animal = ANIMALS[plot.animalType];
+        const now = Date.now();
+
+        // Check cooldown
+        if (now - state.lastBreedAt < BREED_COOLDOWN) {
+          showMessage(`⏳ 繁殖冷却中，剩余 ${formatTimeLeft(BREED_COOLDOWN - (now - state.lastBreedAt))}`, 'info');
+          return;
+        }
+
+        // Check at least 2 adult animals
+        const adultCount = plot.animals.filter(a => now - a.bredAt >= animal.breedTime).length;
+        if (adultCount < 2) {
+          showMessage(`🐾 栏位中至少需要2只成年${animal.name}才能繁殖`, 'info');
+          return;
+        }
+        // Check max limit
+        if (plot.animals.length >= RANCH_MAX_PER_PLOT) {
+          showMessage(`🐾 该栏位已满（最多${RANCH_MAX_PER_PLOT}只）`, 'info');
+          return;
+        }
+        // Deduct cost (50% of animal purchase price)
+        const cost = Math.round(animal.cost * 0.5);
+        if (state.coins < cost) {
+          showMessage(`💰 金币不足，繁殖需要 ${cost}💰`, 'error');
+          return;
+        }
+        state.coins -= cost;
+        // Add new baby and set cooldown
+        plot.animals.push({ bredAt: now, lastProduceAt: null });
+        state.lastBreedAt = now;
+        showMessage(`🐣 ${animal.emoji}${animal.name} 繁殖成功！花费 ${cost}💰，幼崽需 ${Math.round(animal.breedTime / 60000)} 分钟成长`, 'success');
+        saveToLocalStorage();
+        fullRender();
+      }
+
+      function checkAchievements() {
+        ACHIEVEMENTS.forEach(a => {
+          if (!state.achievements[a.id] && a.check(state)) {
+            state.achievements[a.id] = true;
+            setTimeout(() => showMessage(`🏆 成就解锁：${a.icon} ${a.name} — ${a.desc}`, 'success'), 100);
+          }
+        });
+        renderAchievements();
+      }
+
+      // ============================================================
+      // 天气系统
+      // ============================================================
+      function setWeather(weatherKey) {
+        if (!WEATHER[weatherKey]) return;
+        state.weather = weatherKey;
+        updateWeatherCanvas();
+        renderStatusBar();
+        renderFarm();
+        saveToLocalStorage();
+        $$('.header-weather-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.weather === weatherKey));
+      }
+
+      function updateWeatherCanvas() {
+        const canvas = $('#weatherCanvas');
+        const sun = $('#sun');
+        const moon = $('#moon');
+        if (!canvas) return;
+        const w = WEATHER[state.weather];
+        canvas.style.background = w.sky;
+        if (sun) sun.classList.toggle('hidden', w.particle === 'rain');
+        if (moon) {
+          const isNight = getGameHour(state) >= 20 || getGameHour(state) <= 5;
+          moon.classList.toggle('visible', isNight);
+        }
+        updateParticles(w);
+        updateLightning();
+      }
+
+      function updateParticles(weather) {
+        const container = $('#particlesContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        if (weather.particle === 'none') return;
+        const count = weather.particleCount || 0;
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < count; i++) {
+          const el = document.createElement('div');
+          el.className = weather.particle === 'rain' ? 'raindrop' : 'snowflake';
+          el.style.left = Math.random() * 100 + '%';
+          const dur = weather.particle === 'rain' ? 0.5 + Math.random() * 0.5 : 2 + Math.random() * 3;
+          el.style.animationDuration = dur + 's';
+          el.style.animationDelay = Math.random() * dur + 's';
+          if (weather.particle === 'snow') {
+            el.style.width = el.style.height = (3 + Math.random() * 4) + 'px';
+          }
+          frag.appendChild(el);
+        }
+        container.appendChild(frag);
+      }
+
+      function updateLightning() {
+        if (lightningTimer) { clearTimeout(lightningTimer); lightningTimer = null; }
+        const flash = $('#lightningFlash');
+        if (!flash) return;
+        flash.classList.remove('active');
+        if (state.weather === 'stormy') scheduleLightning();
+      }
+
+      function scheduleLightning() {
+        if (state.weather !== 'stormy') return;
+        lightningTimer = setTimeout(triggerLightning, 2000 + Math.random() * 5000);
+      }
+
+      function triggerLightning() {
+        const flash = $('#lightningFlash');
+        if (!flash) return;
+        flash.classList.add('active');
+        const duration = 100 + Math.random() * 150;
+        setTimeout(() => {
+          flash.classList.remove('active');
+          if (Math.random() > 0.7) {
+            setTimeout(() => { flash.classList.add('active'); setTimeout(() => flash.classList.remove('active'), 60 + Math.random() * 80); }, 50 + Math.random() * 100);
+          }
+          scheduleLightning();
+        }, duration);
+      }
+
+      function updateDayNight() {
+        const moon = $('#moon');
+        const sun = $('#sun');
+        if (!moon || !sun) return;
+        const isNight = getGameHour(state) >= 20 || getGameHour(state) <= 5;
+        moon.classList.toggle('visible', isNight);
+        if (isNight) sun.classList.add('hidden');
+        else if (WEATHER[state.weather].particle !== 'rain') sun.classList.remove('hidden');
+      }
+
+      // ============================================================
+      // 城市建筑
+      // ============================================================
+      function initCity() {
+        const container = $('#cityBuildings');
+        if (!container) return;
+        container.innerHTML = BUILDINGS.map((b) => {
+          const cols = Math.floor(b.width / 14);
+          const rows = Math.floor(b.height / 16);
+          let windowsHTML = '';
+          for (let r = 0; r < rows; r++)
+            for (let c = 0; c < cols; c++)
+              windowsHTML += `<div class="window ${Math.random() > 0.4 ? '' : 'off'}" style="left:${6 + c * 14}px;bottom:${b.height - 10 - r * 16}px;"></div>`;
+          return `<div class="building" style="left:${b.left}px;width:${b.width}px;height:${b.height}px;background:${b.color};"><div class="roof"></div>${windowsHTML}</div>`;
+        }).join('');
+      }
+
+      function randomizeWindows() {
+        $$('.window').forEach(w => { if (Math.random() > 0.85) w.classList.toggle('off'); });
+      }
+
+      // ============================================================
+      // 弹窗控制
+      // ============================================================
+      function openModal(id) { $('#' + id).classList.add('open'); }
+      function closeModal(id) { $('#' + id).classList.remove('open'); }
+      function openStorage() { renderStorage(); openModal('storageModal'); }
+      function openHandBook() { renderHandBook(); openModal('handbookModal'); }
+
+      // ============================================================
+      // 定位与真实天气
+      // ============================================================
+      async function fetchWeatherByCoords(latitude, longitude) {
+        if (state.weatherCachedAt && state.weatherCacheData && Date.now() - state.weatherCachedAt < WEATHER_CACHE_TTL) {
+          const cache = state.weatherCacheData;
+          setWeather(cache.weather);
+          $('#locationStatus').textContent = `${cache.city} ${cache.temp}°C`;
+          return;
+        }
+        try {
+          const [cityName, weatherData] = await Promise.all([
+            (async () => {
+              try {
+                const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=zh`);
+                if (!r.ok) return '';
+                const d = await r.json();
+                return d.locality || d.city || d.principalSubdivision || '';
+              } catch (_) { return ''; }
+            })(),
+            (async () => {
+              const r = await fetch(`https://wttr.in/${latitude},${longitude}?format=j1&lang=zh`);
+              if (!r.ok) throw new Error('天气 API 请求失败');
+              return r.json();
+            })()
+          ]);
+          const areaNames = weatherData.nearest_area?.[0]?.areaName || [];
+          const fallbackCity = areaNames.find(n => n.lang === 'zh')?.value || areaNames[0]?.value || '';
+          const displayCity = cityName || fallbackCity;
+          const cur = weatherData.current_condition?.[0];
+          if (!cur) throw new Error('无法解析天气数据');
+          const desc = (cur.weatherDesc?.[0]?.value || '').toLowerCase();
+          let gameWeather = 'sunny';
+          if (desc.includes('thunder') || desc.includes('storm')) gameWeather = 'stormy';
+          else if (desc.includes('rain') || desc.includes('drizzle') || desc.includes('shower')) gameWeather = 'rainy';
+          else if (desc.includes('snow') || desc.includes('sleet') || desc.includes('blizzard') || desc.includes('ice')) gameWeather = 'snowy';
+          setWeather(gameWeather);
+          state.weatherLocked = true;
+          state.weatherCachedAt = Date.now();
+          state.weatherCacheData = { weather: gameWeather, temp: Math.round(cur.temp_C), city: displayCity };
+          saveToLocalStorage();
+          $('#locationStatus').textContent = `${displayCity} ${cur.temp_C}°C`;
+          showMessage(`📍 ${displayCity}天气已同步`, 'success');
+        } catch (err) {
+          console.warn('天气获取失败:', err);
+          $('#locationStatus').textContent = '';
+          showMessage('📍 定位失败，请重试', 'error');
+        }
+      }
+
+      async function fetchWeatherByGPS() {
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+          });
+          state.lastLat = pos.coords.latitude;
+          state.lastLon = pos.coords.longitude;
+          saveToLocalStorage();
+          await fetchWeatherByCoords(state.lastLat, state.lastLon);
+        } catch (err) {
+          console.warn('定位失败:', err.message);
+        }
+      }
+
+      function showWeatherTooltip(anchor, weatherKey) {
+        const w = WEATHER[weatherKey];
+        const tip = $('#weatherTooltip');
+        if (!tip) return;
+        tip.innerHTML = `<div class="tooltip-icon">${w.icon}</div><div class="tooltip-name">${w.label}</div><div class="tooltip-detail">🌱 生长 ×${w.multiplier}</div>`;
+        const rect = anchor.getBoundingClientRect();
+        tip.style.left = rect.left + 'px';
+        tip.style.top = (rect.bottom + 8) + 'px';
+        tip.classList.add('visible');
+      }
+
+      function hideWeatherTooltip() { $('#weatherTooltip')?.classList.remove('visible'); }
+
+      // ============================================================
+      // 事件绑定
+      // ============================================================
+      function bindEvents() {
+        $$('.header-weather-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (!state.weatherLocked) setWeather(btn.dataset.weather);
+          });
+          btn.addEventListener('mouseenter', () => {
+            if (state.weatherLocked && btn.dataset.weather !== state.weather) showWeatherTooltip(btn, btn.dataset.weather);
+          });
+          btn.addEventListener('mouseleave', hideWeatherTooltip);
+        });
+
+        $('#gpsBtn')?.addEventListener('click', () => {
+          showMessage('📍 正在获取定位...', 'info');
+          fetchWeatherByGPS();
+        });
+
+        $('#saveBtn')?.addEventListener('click', () => { saveToLocalStorage(); showMessage('💾 已保存到本地', 'success'); });
+        $('#exportBtn')?.addEventListener('click', exportSave);
+        $('#importBtn')?.addEventListener('click', () => $('#import-input').click());
+        $('#import-input')?.addEventListener('change', (e) => {
+          if (e.target.files.length > 0) { importSave(e.target.files[0]); e.target.value = ''; }
+        });
+        $('#resetBtn')?.addEventListener('click', resetGame);
+
+        $$('.farm-tab').forEach(btn => {
+          btn.addEventListener('click', () => {
+            $$('.farm-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const isFarm = btn.dataset.mode === 'farm';
+            $('#farmGrid').style.display = isFarm ? '' : 'none';
+            $('#ranchGrid').style.display = isFarm ? 'none' : '';
+            $('#seedShopSection').style.display = isFarm ? '' : 'none';
+            $('#animalShopSection').style.display = isFarm ? 'none' : '';
+
+            if (isFarm) {
+              $('#messageHint').textContent = '🌱 点击种子，再点空地种植';
+              state.selectedAnimal = null;
+              renderAnimalShop();
+              // Cancel breed mode if active
+              if (state.breedMode) {
+                state.breedMode = false;
+                $('#breedBtn').textContent = '🐣 繁殖动物';
+              }
             } else {
-                log('无备份 Offer，请取消房间后重新创建', 'error');
-                setStatus('error'); return;
+              $('#messageHint').textContent = '🐾 点击动物购入，右键屠宰';
+              state.selectedCrop = null;
+              renderSeedBar();
+              renderRanch();
+              renderAnimalShop();
             }
+          });
+        });
+
+        $('#handbookBtn')?.addEventListener('click', openHandBook);
+        $('#handbookClose')?.addEventListener('click', () => closeModal('handbookModal'));
+        $('#handbookModal')?.addEventListener('click', (e) => { if (e.target.id === 'handbookModal') closeModal('handbookModal'); });
+        $('#storageBtn')?.addEventListener('click', openStorage);
+        $('#storageClose')?.addEventListener('click', () => closeModal('storageModal'));
+        $('#storageModal')?.addEventListener('click', (e) => { if (e.target.id === 'storageModal') closeModal('storageModal'); });
+
+        $('#storageBody')?.addEventListener('click', (e) => {
+          const qualityItem = e.target.closest('.storage-quality-item');
+          if (qualityItem) {
+            if (qualityItem.dataset.crop) {
+              sellCrop(qualityItem.dataset.crop, qualityItem.dataset.quality);
+            } else if (qualityItem.dataset.ranch) {
+              sellAnimalProduct(qualityItem.dataset.ranch, qualityItem.dataset.quality);
+            }
+            return;
+          }
+          const sellAllBtn = e.target.closest('.sell-all-btn');
+          if (sellAllBtn) {
+            if (sellAllBtn.dataset.crop) {
+              sellAllCrop(sellAllBtn.dataset.crop);
+            } else if (sellAllBtn.dataset.ranch) {
+              sellAllAnimalProduct(sellAllBtn.dataset.ranch);
+            }
+          }
+        });
+
+
+        $('#breedBtn')?.addEventListener('click', () => {
+          const now = Date.now();
+          if (now - state.lastBreedAt < BREED_COOLDOWN) {
+            showMessage(`⏳ 繁殖冷却中，剩余 ${formatTimeLeft(BREED_COOLDOWN - (now - state.lastBreedAt))}`, 'info');
+            return;
+          }
+          const hasEligible = state.ranchPlots.some(p => {
+            if (!p.animalType || p.animals.length < 2) return false;
+            const animal = ANIMALS[p.animalType];
+            const adultCount = p.animals.filter(a => now - a.bredAt >= animal.breedTime).length;
+            return adultCount >= 2 && p.animals.length < RANCH_MAX_PER_PLOT;
+          });
+          if (!hasEligible) {
+            showMessage('🐾 没有可繁殖的动物（需要≥2只成年同种 + 有空位）', 'info');
+            return;
+          }
+          state.breedMode = !state.breedMode;
+          if (state.breedMode) {
+            $('#breedBtn').textContent = '🔴 取消繁殖';
+            showMessage('🐣 点击一个要繁殖的栏位', 'info');
+          } else {
+            $('#breedBtn').textContent = '🐣 繁殖动物';
+            showMessage('已取消繁殖', 'info');
+          }
+        });
+
+        // Achievement tooltip hover
+        const achContainer = $('#achievementsArea');
+        const achTip = $('#achievementTooltip');
+        if (achContainer && achTip) {
+          achContainer.addEventListener('mouseenter', (e) => {
+            const badge = e.target.closest('.achievement-badge');
+            if (!badge) { achTip.classList.remove('visible'); return; }
+            const icon = badge.dataset.icon || '🏅';
+            const name = badge.dataset.name || '';
+            const desc = badge.dataset.desc || '';
+            achTip.innerHTML = `<div class="tooltip-title">${icon} ${name}</div><div class="tooltip-desc">${desc}</div>`;
+            const rect = badge.getBoundingClientRect();
+            achTip.style.left = rect.left + 'px';
+            achTip.style.top = (rect.bottom + 8) + 'px';
+            achTip.classList.add('visible');
+          }, true);
+          achContainer.addEventListener('mouseleave', () => {
+            achTip.classList.remove('visible');
+          }, true);
+          // Track mouse within badges for position updates
+          achContainer.addEventListener('mousemove', (e) => {
+            const badge = e.target.closest('.achievement-badge');
+            if (!badge) { achTip.classList.remove('visible'); return; }
+            const rect = badge.getBoundingClientRect();
+            achTip.style.left = rect.left + 'px';
+            achTip.style.top = (rect.bottom + 8) + 'px';
+          });
         }
 
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') { closeModal('handbookModal'); closeModal('storageModal'); }
+          if (e.key === 's' && e.ctrlKey) { e.preventDefault(); saveToLocalStorage(); showMessage('💾 已保存到本地', 'success'); }
+        });
+      }
+
+      // ============================================================
+      // Tick 循环 — 仅更新计时，不重建 DOM
+      // ============================================================
+      function tick() {
         try {
-            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sdp)));
-            log('Answer 已设置，连接建立中...', 'success');
-        } catch (err) {
-            log(`设置 Answer 失败: ${err.message}`, 'error');
-            setStatus('error');
+          renderFarm();
+          updateRanchTimers();
+          renderStatusBar();
+          updateDayNight();
+          randomizeWindows();
+        } catch (e) {
+          console.warn('tick error:', e);
         }
-    }
+      }
 
-    // ==================== Chat ====================
-    function sendMsg() {
-        const inp = $('msgInput');
-        const txt = inp.value.trim();
-        if (!txt) return;
-        if (!dc || dc.readyState !== 'open') { log('连接未就绪', 'error'); return; }
-        dc.send(txt);
-        const t = new Date().toLocaleTimeString();
-        log(`发送: ${txt}`, 'info');
-        const d = document.createElement('div'); d.className = 'msg me';
-        d.innerHTML = `我: ${txt} <span class="time">${t}</span>`;
-        $('chatMsgs').appendChild(d); $('chatMsgs').scrollTop = $('chatMsgs').scrollHeight;
-        inp.value = '';
-    }
+      function updateRanchTimers() {
+        const now = Date.now();
+        $$('.ranch-plot.has-crop').forEach(plotEl => {
+          const index = parseInt(plotEl.dataset.ranchIndex);
+          const plot = state.ranchPlots[index];
+          if (!plot || !plot.animalType || !plot.animals) return;
+          const animal = ANIMALS[plot.animalType];
+          if (!animal) return;
 
-    // ==================== Cleanup ====================
-    function cleanup() {
-        try { dc && dc.close(); } catch {}
-        try { pc && pc.close(); } catch {}
-        pc = null; dc = null; connected = false; savedOffer = null;
-    }
+          // Find grow timer label
+          const growEl = plotEl.querySelector('.grow-timer');
+          if (growEl) {
+            const growing = plot.animals.find(a => now - a.bredAt < animal.breedTime);
+            if (growing) {
+              const timeLeft = animal.breedTime - (now - growing.bredAt);
+              growEl.textContent = `⏳ ${formatTimeLeft(timeLeft)}`;
+            } else {
+              growEl.remove();
+            }
+          }
 
-    function disconnect() {
-        cleanup();
-        mode = 'lobby';
-        showCards(['lobbyCard']);
-        setStatus('idle', '⏹ 已断开');
-        log('已断开连接', 'error');
-        $('chatMsgs').innerHTML = '';
-    }
+          // Find produce timer label
+          const produceEl = plotEl.querySelector('.ranch-produce-ready');
+          if (!animal.produceType) {
+            if (produceEl) produceEl.remove();
+            return;
+          }
 
-    // ==================== Init ====================
-    initBC();
-    log('P2P 大厅已就绪', 'sys');
-</script>
+          let readyCount = 0;
+          let minTimeLeft = Infinity;
+          plot.animals.forEach(a => {
+            if (now - a.bredAt >= animal.breedTime) {
+              const elapsed = a.lastProduceAt ? now - a.lastProduceAt : Math.max(0, now - a.bredAt - animal.breedTime);
+              const timeLeft = animal.produceInterval - elapsed;
+              if (timeLeft <= 0) readyCount++;
+              else if (timeLeft < minTimeLeft) minTimeLeft = timeLeft;
+            }
+          });
+
+          if (produceEl) {
+            if (readyCount > 0) {
+              produceEl.textContent = `${animal.produceEmoji}`;
+            } else if (minTimeLeft < Infinity) {
+              produceEl.textContent = `⏳ ${formatTimeLeft(minTimeLeft)}`;
+            } else {
+              produceEl.remove();
+            }
+          } else if (readyCount > 0 || minTimeLeft < Infinity) {
+            // Need to create the label — full render to add it
+            renderRanch();
+            return;
+          }
+        });
+      }
+
+      // ============================================================
+      // 初始化
+      // ============================================================
+      function init() {
+        if (!loadFromLocalStorage()) state = createInitialState();
+        initCity();
+        updateWeatherCanvas();
+        fullRender();
+        bindEvents();
+        setInterval(tick, 1000);
+        setInterval(saveToLocalStorage, 30000);
+        if (state.lastLat != null && state.lastLon != null) fetchWeatherByCoords(state.lastLat, state.lastLon);
+        setInterval(() => {
+          if (state.lastLat != null && state.lastLon != null) fetchWeatherByCoords(state.lastLat, state.lastLon);
+        }, WEATHER_CACHE_TTL);
+        console.log('🌤️ 像素天气农场 · 扩展版已加载！');
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
 </body>
 </html>
